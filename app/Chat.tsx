@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Brand } from "./components/Brand";
 import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
+import { ThinkingIndicator } from "./components/ThinkingIndicator";
 import type { ChatSummary } from "./components/ChatListItem";
 import { BootstrapView } from "./BootstrapView";
 
@@ -287,17 +288,24 @@ export default function Chat() {
                 </p>
               </div>
             ) : (
-              messages.map((m, i) => (
-                <MessageBubble
-                  key={i}
-                  message={m}
-                  isStreaming={
-                    isStreaming &&
-                    i === messages.length - 1 &&
-                    m.role === "assistant"
-                  }
-                />
-              ))
+              messages.map((m, i) => {
+                const isLast = i === messages.length - 1;
+                const isWaitingChunk =
+                  isStreaming &&
+                  isLast &&
+                  m.role === "assistant" &&
+                  m.content === "";
+                if (isWaitingChunk) {
+                  return <ThinkingIndicator key={i} />;
+                }
+                return (
+                  <MessageBubble
+                    key={i}
+                    message={m}
+                    isStreaming={isStreaming && isLast && m.role === "assistant"}
+                  />
+                );
+              })
             )}
           </div>
         </div>

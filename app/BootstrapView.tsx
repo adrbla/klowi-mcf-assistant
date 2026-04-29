@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Brand } from "./components/Brand";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import { KickoffProgress } from "./components/KickoffProgress";
+import { ThinkingIndicator } from "./components/ThinkingIndicator";
 
 const KICKOFF = "[OPEN]";
 const START_COMMAND = "/start";
@@ -152,13 +153,21 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
           </div>
           {visibleMessages.map((m, i) => {
             const isLast = i === visibleMessages.length - 1;
-            const isWaitingFirstChunk =
+            const isWaitingChunk =
               isStreaming &&
               isLast &&
               m.role === "assistant" &&
               m.content === "";
-            if (isWaitingFirstChunk) {
-              return <KickoffProgress key={i} />;
+            if (isWaitingChunk) {
+              // Only the very first response (the [OPEN] kickoff) gets the
+              // progressive scripted sequence. Subsequent turns use the
+              // shorter random "Je réfléchis…" indicator.
+              const isKickoff = visibleMessages.length === 1;
+              return isKickoff ? (
+                <KickoffProgress key={i} />
+              ) : (
+                <ThinkingIndicator key={i} />
+              );
             }
             return (
               <MessageBubble
