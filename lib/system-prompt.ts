@@ -19,7 +19,10 @@ import { list } from "@vercel/blob";
  * static asset tracing).
  */
 
-const PUBLIC_PROMPT_DIR = path.join(process.cwd(), "context", "prompt");
+const PUBLIC_PROMPT_DIRS = [
+  path.join(process.cwd(), "context", "prompt"),
+  path.join(process.cwd(), "context", "deeper-context"),
+];
 const BLOB_PREFIX = "_prep";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -92,7 +95,10 @@ async function fetchPrepFromBlob(): Promise<string> {
 }
 
 export async function assembleSystemPrompt(): Promise<string> {
-  const publicPart = await readMarkdownDirRecursive(PUBLIC_PROMPT_DIR);
+  const publicParts = await Promise.all(
+    PUBLIC_PROMPT_DIRS.map(readMarkdownDirRecursive),
+  );
+  const publicPart = publicParts.filter(Boolean).join("\n---\n\n");
 
   let privatePart = "";
   const localDir = process.env.MCF_PREP_DIR;

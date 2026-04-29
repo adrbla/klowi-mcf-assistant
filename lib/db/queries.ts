@@ -71,3 +71,23 @@ export async function touchChat(chatId: string, title?: string): Promise<void> {
   if (title) update.title = title;
   await db.update(chats).set(update).where(eq(chats.id, chatId));
 }
+
+export async function renameChat(
+  chatId: string,
+  title: string,
+): Promise<Chat | undefined> {
+  const [updated] = await db
+    .update(chats)
+    .set({ title, updatedAt: new Date() })
+    .where(eq(chats.id, chatId))
+    .returning();
+  return updated;
+}
+
+export async function deleteChat(chatId: string): Promise<boolean> {
+  const result = await db
+    .delete(chats)
+    .where(eq(chats.id, chatId))
+    .returning({ id: chats.id });
+  return result.length > 0;
+}
