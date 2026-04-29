@@ -37,6 +37,32 @@ function isReadme(file: string): boolean {
   return /^README/i.test(file);
 }
 
+/**
+ * Pulls the first markdown H1/H2/H3 heading from the top of a file (within the
+ * first 20 lines). Strips bold/italic markers and trims to a reasonable length
+ * so the per-section comment stays a tight one-liner the model can parse as a
+ * descriptor rather than padding.
+ */
+function extractFirstHeading(content: string, maxLen = 120): string | null {
+  const lines = content.split("\n");
+  const limit = Math.min(lines.length, 20);
+  for (let i = 0; i < limit; i++) {
+    const m = lines[i].match(/^#{1,3}\s+(.+?)\s*$/);
+    if (!m) continue;
+    let title = m[1].replace(/\*\*/g, "").replace(/\*/g, "").trim();
+    if (title.length > maxLen) {
+      title = title.slice(0, maxLen - 1).trimEnd() + "…";
+    }
+    return title;
+  }
+  return null;
+}
+
+function buildSectionMarker(relPath: string, content: string): string {
+  const title = extractFirstHeading(content);
+  return title ? `<!-- ${relPath} — ${title} -->` : `<!-- ${relPath} -->`;
+}
+
 async function readMarkdownDirRecursive(dir: string): Promise<string> {
   let entries: { relPath: string }[];
   try {
@@ -57,8 +83,8 @@ async function readMarkdownDirRecursive(dir: string): Promise<string> {
   entries.sort((a, b) => a.relPath.localeCompare(b.relPath));
   const parts = await Promise.all(
     entries.map(async ({ relPath }) => {
-      const content = await fs.readFile(path.join(dir, relPath), "utf-8");
-      return `<!-- ${relPath} -->\n${content.trim()}\n`;
+      const content = (await fs.readFile(path.join(dir, relPath), "utf-8")).trim();
+      return `${buildSectionMarker(relPath, content)}\n${content}\n`;
     }),
   );
   return parts.join("\n");
@@ -82,11 +108,11 @@ async function fetchPrepFromBlob(): Promise<string> {
       if (!result) {
         throw new Error(`Blob get returned null for ${b.pathname}`);
       }
-      const text = await new Response(result.stream).text();
+      const text = (await new Response(result.stream).text()).trim();
       const relPath = b.pathname.startsWith(`${BLOB_PREFIX}/`)
         ? b.pathname.slice(BLOB_PREFIX.length + 1)
         : b.pathname;
-      return `<!-- ${relPath} -->\n${text.trim()}\n`;
+      return `${buildSectionMarker(relPath, text)}\n${text}\n`;
     }),
   );
 
