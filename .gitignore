@@ -50,6 +50,9 @@ devs-template.md
 mcf
 mcf/
 
+# Claude Code per-machine settings (not committed)
+.claude/settings.local.json
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
