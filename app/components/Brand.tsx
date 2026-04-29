@@ -1,12 +1,18 @@
 type Size = "sm" | "md" | "lg" | "xl";
 
-const sizes: Record<Size, { k: string; mcf: string; gap: string }> = {
-  sm: { k: "text-[18px]", mcf: "text-[9px]", gap: "gap-[6px]" },
-  md: { k: "text-[22px]", mcf: "text-[10px]", gap: "gap-[8px]" },
-  lg: { k: "text-[34px]", mcf: "text-[11px]", gap: "gap-[10px]" },
-  xl: { k: "text-[56px]", mcf: "text-[13px]", gap: "gap-[14px]" },
+const sizes: Record<Size, { fs: string; tracking: string }> = {
+  sm: { fs: "text-[9px]", tracking: "tracking-[0.18em]" },
+  md: { fs: "text-[10px]", tracking: "tracking-[0.20em]" },
+  lg: { fs: "text-[12px]", tracking: "tracking-[0.22em]" },
+  xl: { fs: "text-[14px]", tracking: "tracking-[0.24em]" },
 };
 
+/**
+ * Brand mark for the app. Discreet, label-style — no italic serif wordmark,
+ * no hero treatment. Reads as a system identifier rather than a brand
+ * statement. Always one line, mono uppercase, muted color, scales by
+ * letterspacing more than by font size.
+ */
 export function Brand({
   size = "md",
   className = "",
@@ -17,19 +23,10 @@ export function Brand({
   const s = sizes[size];
   return (
     <span
-      className={`inline-flex items-baseline ${s.gap} ${className}`}
-      aria-label="Klowi MCF"
+      className={`font-mono uppercase text-muted ${s.fs} ${s.tracking} ${className}`}
+      aria-label="CC MCF Prep Companion"
     >
-      <span
-        className={`font-display italic leading-none tracking-[-0.01em] text-foreground ${s.k}`}
-      >
-        Klowi
-      </span>
-      <span
-        className={`font-mono uppercase tracking-[0.22em] text-muted ${s.mcf}`}
-      >
-        MCF
-      </span>
+      CC · MCF · PREP COMPANION
     </span>
   );
 }

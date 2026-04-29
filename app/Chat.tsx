@@ -269,7 +269,7 @@ export default function Chat() {
             </svg>
           </button>
           <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-muted truncate max-w-[200px]">
-            {activeTitle ?? "Klowi MCF"}
+            {activeTitle ?? "CC · MCF"}
           </div>
           <div className="w-8" />
         </header>

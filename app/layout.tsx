@@ -36,7 +36,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Klowi MCF",
+  title: "CC · MCF · Prep Companion",
   description: "",
   icons: { icon: "/icon.svg" },
 };
