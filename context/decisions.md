@@ -1,5 +1,117 @@
 # Decisions – klowi-mcf-assistant
 
+## 2026-04-29 – Companion framing: pas un coach, pas ChatGPT, pas une IA générique
+
+**Context**: PO brief pivots away from « coach » framing — the user is wary of AI, doesn't want a tutor, doesn't want assistant clichés. The companion needs to land as something specifically calibrated for Chloë rather than as another chatbot.
+
+**Decision**: 
+- Persona is **companion / pote** — horizontale, sober, warm-but-not-overplayed.
+- Explicit anti-AI-cliché register: no « absolument ! », « ravie de t'accompagner », « excellente question ! ». No defensive disclaimers (« en tant qu'IA »…).
+- One sober mention at `[FIRST]` — « pas un chatbot, pas ChatGPT, calibrée pour cette mission » — never repeated.
+- Credibility through **demonstrated knowledge** (CVs, dossiers, audition specifics) rather than through self-justification.
+- Tutoiement par défaut (matches the pote register).
+- English as aparté (Brit-in-France bonding, untranslatable expression) — never the default mode, but accepted.
+
+**Rejected alternatives**:
+- Coach framing (PO's original) — felt too vertical, too clichéd.
+- Cute / playful avatar — would have read as another generic AI persona.
+- Hardcoded name — left to Chloë in bootstrap so the relationship is hers.
+
+**Consequences**: every response shape rule traces back to this — short by default, no menu, no inventory, propose to dig before tartining.
+
+***
+
+## 2026-04-29 – Bootstrap = ephemeral conversation at `/bootstrap`
+
+**Context**: Chloë lands cold (PO sends her the link, no prior context). She doesn't know what this is. The first interaction needs to be a brief cadrage (name, light prefs) before the « real » sessions, but it shouldn't pollute her sidebar afterwards.
+
+**Decision**:
+- Dedicated `/bootstrap` slug. PO sends Chloë `klowi.dooloob.com/bootstrap`.
+- Bootstrap kickoff fires automatically via marker `[OPEN]` (companion greets first, no need for Chloë to type).
+- On `/start`, the bootstrap conversation is **DELETED** (cascade messages via FK). It's ephemeral by design — its purpose was the relationship, not the content.
+- localStorage flag `klowi.bootstrap.done` set ; subsequent visits to `/bootstrap` show « C'est fait » + link to `/`.
+- Redirect to `/?welcome=1` after deletion ; main UI fires a `[FIRST]` marker that creates the first « real » chat, pre-named **« Warm up »**.
+
+**Rejected alternatives**:
+- Single `/` route branching on localStorage (initial implementation) — too coupled, hard to share a clean URL with Chloë, and the bootstrap chat lingered in the sidebar with cryptic « [OPEN] » titles.
+- Saving the bootstrap as a labelled « Bootstrap » chat — felt cluttered for a meta-session of no real content value.
+
+**Consequences**:
+- Chat title auto-derive (`setTitleIfDefault`) skips kickoff markers — covers fresh chats AND post-welcome chats whose first user message was `[FIRST]`.
+- Markers `[OPEN]` and `[FIRST]` are filtered server-side from `/api/chat/history` responses but preserved in DB for the API user/assistant alternation invariant.
+- Future cross-session memory work will not see bootstrap content (it's gone) — name + prefs Chloë chose during bootstrap are not auto-persisted to a future « identity » file. PO can manually update `00-identity.md` after observing the first interactions if useful.
+
+***
+
+## 2026-04-29 – Brand mark : `CC · MCF · PREP COMPANION` (system label, not brand statement)
+
+**Context**: Initial brand was `Klowi MCF` rendered as italic-serif hero. Two issues: (a) « Klowi » is actually Chloë's own phonetic nickname, not the companion's name — using it as a header risked confusion ; (b) the hero treatment felt too marketing-heavy for an intimate one-user app.
+
+**Decision**: Single-line mono uppercase tag `CC · MCF · PREP COMPANION` with letterspacing (0.18em → 0.24em across sizes), text-muted color. Reads as a system identifier rather than a brand. Same treatment across all surfaces (login, sidebar header, mobile crumb).
+
+**Rejected alternatives**:
+- Keeping the italic-serif wordmark — too hero, conflicting with the « it's just one person's space » feel.
+- Adding a tagline like « your MCF prep » — read as a SaaS product.
+- Hiding the wordmark entirely — needed something to indicate continuity across pages.
+
+**Consequences**: Brand barely visible. The companion conversation carries the personality. Wordmark = pure identification.
+
+***
+
+## 2026-04-29 – Theming architecture : next-themes (palette) + custom hook (mode)
+
+**Context**: 5 themes × {light, dark, auto} = 10 visual states. `next-themes` natively handles a single axis (one class on `<html>`). For two axes we needed a different shape.
+
+**Decision**:
+- `next-themes` manages the **palette** axis (5 themes as classes : `theme-seminaire`, `theme-sobre`, etc.).
+- A custom hook in `ThemePicker.tsx` manages the **mode** axis (light / dark / auto) via `localStorage["klowi.mode"]` + a `.dark` class added/removed manually on `<html>`.
+- CSS convention : `.theme-X { /* light tokens */ } .theme-X.dark { /* dark overrides */ }`. Two classes on `<html>` simultaneously.
+- No-flash inline script in `<head>` injected via Next layout to set the right classes before React hydrates.
+
+**Rejected alternatives**:
+- 10 flat themes in `next-themes` — would have worked but explodes the picker UX (no clean way to separate « palette » from « mode »).
+- Custom-everything provider, no `next-themes` — would have meant rolling our own SSR hydration which is the messy part. `next-themes` solves that.
+
+**Consequences**: ThemePicker maintains both axes independently. Adding a 6th theme = adding a `.theme-X` rule + the picker swatch ; mode logic untouched.
+
+***
+
+## 2026-04-29 – /admin route with separate ADMIN_PASSCODE (two-tier auth)
+
+**Context**: PO needs visibility on what feeds the system prompt (inventory + raw sections) without giving Chloë access to the same. Both share the deployed app.
+
+**Decision**:
+- `/admin` route gated by middleware (so Chloë can't reach it without `APP_PASSCODE`) + a SECOND passcode (`ADMIN_PASSCODE` env var, distinct cookie `klowi-admin` signed with the same `AUTH_SECRET`). Two-factor in spirit.
+- No link from main UI — slug `/admin` is hidden, PO knows the URL.
+- Two tabs : **Contexte** (inventory of sources with sizes / token estimates) + **Prompt** (sections collapsible, content in `<pre>`).
+- Read-only for v1 — no editing of fragments yet.
+
+**Rejected alternatives**:
+- Single passcode shared with main app — Chloë could trivially guess `/admin` and see her own dossiers from a meta-perspective.
+- Separate hosted dashboard (Retool, Tooljet) — overkill for a one-PO-one-user app.
+- Dedicated subdomain (`admin.klowi.dooloob.com`) — overhead for no privacy gain.
+
+**Consequences**: Two env vars to maintain (`APP_PASSCODE`, `ADMIN_PASSCODE`). Editing fragments still happens via Git + redeploy ; admin is observability only.
+
+***
+
+## 2026-04-29 – Corpus map : manifest + auto-extracted file titles
+
+**Context**: ~140K tokens of corpus across 23+ files. Without orientation cues, the model has to infer what each file is from its content. Risk: the companion confuses 3 CV variants, the 2 DR per audition, etc.
+
+**Decision**: Two complementary layers.
+1. `context/prompt/15-corpus-map.md` — hand-written index that precedes every other document. Groups files by purpose (identity, profile, Grenoble strategic / tactical, Strasbourg strategic / tactical, transversal). Notes intentional duplication explicitly so the model treats them as complementary views.
+2. `lib/system-prompt.ts` extracts the first H1/H2/H3 heading from each file (max 120 chars, markdown stripped) and embeds it in the section comment marker : `<!-- DR07 - GRENOBLE.md — Rapport d'expertise : Analyse stratégique… -->`. Zero maintenance — the title travels with the file.
+
+**Rejected alternatives**:
+- YAML frontmatter on every file — would require touching every external doc (DRs come from a separate Claude Deep Research tool, would be modified each regen).
+- Pure manifest, no per-file labels — manifest can drift from reality if files are renamed.
+- Pure auto-extraction, no manifest — model gets titles but no semantic grouping or duplication notes.
+
+**Consequences**: ~+2 KB to the system prompt for the corpus map, plus a few hundred bytes for the extracted titles. Negligible cost given Sonnet 4.6's caching.
+
+***
+
 ## 2026-04-29 – Private prep storage on Vercel: Blob (private store)
 
 **Context**: The private corpus (`mcf/_prep/`) lives in a Drive-symlinked folder locally. Vercel deploys can't follow that symlink, and we want the strategic content out of Git permanently.

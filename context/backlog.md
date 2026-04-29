@@ -2,23 +2,20 @@
 
 ## Now (immediate priority)
 
-- [ ] **PO sets `APP_PASSCODE` + `AUTH_SECRET` on Vercel** (Production + Preview + Development) — bloquant pour le 1er deploy fonctionnel.
-- [ ] **Push + premier deploy prod** : `git push origin main` → Vercel auto-deploy → vérifier `klowi.dooloob.com`.
-- [ ] **Phase 3 — Briefs PO intégrés** : `context/prompt/00-identity.md` (questions onboarding), `10-coach-behavior.md` (dérivé CONTEXT-COACH), `20-chloe-profile.md` (CV).
-- [ ] **Phase 3 — Multi-chat sidebar** : DB-side déjà multi, manque l'UI (liste + switch + rename + delete).
-- [ ] **Phase 3 — Admin zone** : interface réservée PO pour éditer les fragments de prompt, voir le prompt assemblé, déclencher `sync-prep` à distance, suivre les tokens.
-- [ ] **Phase 3 — UI redesign** (PO mentionne "Claude Design") : à attendre, tu reviens avec une direction.
+- [ ] **Observer le 1er échange réel de Chloë** sur `/bootstrap`. Friction points, tone, perception « pas ChatGPT ». Resserrer si nécessaire.
+- [ ] **Cross-session memory** (loggé) : pipeline de summarization à la fin de chaque chat (titre + résumé court + tags), injection dans le system prompt des sessions suivantes (titres + résumés courts seulement, pas les détails). La companion sait qu'elle a *connaissance* d'autres sessions sans en avoir le détail. Schéma DB : `chat_summaries (chat_id, title, summary, tags, created_at)`. Documenter dans `10-posture.md`.
+- [ ] **Page logs + numéro de version discret** (loggé) : `/admin/logs` récap commits récents + token usage / cache hit ratio + erreurs récentes. Numéro de version (depuis package.json ou VERSION file) injecté dans le system prompt pour que la companion puisse répondre à « il y a eu des modifs ? ».
+- [ ] **Édition côté admin** des fragments de prompt (00-identity, 10-posture, 15-corpus-map) — write-back en Git via une route serveur ou via Blob. Pour itérer sans redeploy systématique côté PO.
+- [ ] **Génération `.md` à la demande** : la companion peut suggérer cette feature quand un livrable formel serait utile (déjà documenté dans `10-posture.md`). À implémenter quand un cas concret se présente : route serveur qui fait répondre Anthropic en mode « produire le doc complet » + download Blob/file.
 
 ## Next (upcoming)
 
-- [ ] **Persistance transverse / cross-session memory** — pipeline de summarization à la fin de chaque chat (titre + résumé court + tags), injection dans le system prompt des sessions suivantes (titres + résumés courts seulement, pas les détails). La companion sait qu'elle a *connaissance* d'autres sessions sans en avoir le détail ; elle peut suggérer à Chloë de « repartir de la session X » si ça pertinent. Documenter dans `10-posture.md` côté prompt. Schéma DB : table `chat_summaries (chat_id, title, summary, tags, created_at)`.
-- [ ] **Page logs côté /admin** + **numéro de version discret visible à la companion** — le numéro est injecté dans le system prompt (par ex. `version: 0.X.Y` extrait du package.json ou d'un VERSION file). Permet à Chloë de savoir « si Adrien a fait des modifs depuis la dernière fois » via la companion. La page logs récapitule : commits récents (depuis git ou un changelog), token usage / cache hit ratio par jour, erreurs récentes.
-- [ ] Première session end-to-end validée par Chloë (= bootstrap meta-session live)
-- [ ] Streaming SSE typé (au lieu de text/plain brut) — permettrait de pousser thinking blocks, tool_use events, errors au client
-- [ ] shadcn/ui init quand on a besoin d'un primitive (Dialog, DropdownMenu, etc.)
-- [ ] Telemetry : dashboard simple des token counts par chat (input / output / cache_read / cache_creation) — déjà persistés en DB
-- [ ] Mode "show thinking" optionnel dans l'UI (toggle pour afficher les blocs `thinking` du modèle)
-- [ ] Citations web search rendues dans l'UI (liens cliquables)
+- [ ] Streaming SSE typé (au lieu de text/plain brut) — permettrait de pousser thinking blocks, tool_use events, errors au client.
+- [ ] shadcn/ui init quand on a besoin d'un primitive (Dialog, DropdownMenu, etc.).
+- [ ] Telemetry : dashboard simple des token counts par chat (input / output / cache_read / cache_creation) — déjà persistés en DB.
+- [ ] Mode « show thinking » optionnel dans l'UI (toggle pour afficher les blocs `thinking` du modèle).
+- [ ] Citations web search rendues dans l'UI (liens cliquables).
+- [ ] Dédup proactive du corpus : 3 CVs, 2 DR par audition. Voir si on peut réduire ~140K → ~80K tokens sans perte sémantique. Réduit le 1er-tour latency.
 
 ## Later (à explorer)
 
@@ -50,6 +47,25 @@
 - [x] Vercel Blob (private store) provisionné, `sync-prep` script, runtime hybrid fs/Blob — *Phase 3*
 - [x] Walk récursif de `_prep/` (sous-dossiers `grenoble/`, `strasbourg/` inclus) — *Phase 3*
 - [x] Passcode auth : middleware + cookie HMAC + /login + /api/{login,logout} — *Phase 3*
+- [x] Premier deploy prod via CLI Vercel + custom domain `klowi.dooloob.com` aliasé — *Phase 3*
+- [x] Permission rule Claude Code locale pour `git push` — *Phase 3*
+- [x] Brief PO assistant (`brief_assistante_chloe_mcf.md`) intégré dans `00-identity.md` + `10-posture.md` — *Phase 4*
+- [x] `context/deeper-context/` (CVs, DR, fiches) commit + walked recursively dans le system prompt — *Phase 4*
+- [x] Brief UI rédigé (`brief_ui_klowi.md`) puis package Claude Design intégré — *Phase 4*
+- [x] 5 thèmes × light/dark + ThemePicker (next-themes palette + custom hook mode) — *Phase 4*
+- [x] Sidebar collapsible « cahier de notes », time-bucket grouping, ChatListItem avec rename inline / delete — *Phase 4*
+- [x] Brand mark pivot : `Klowi MCF` italic serif → `CC · MCF · PREP COMPANION` mono uppercase — *Phase 4*
+- [x] /admin avec auth séparée (ADMIN_PASSCODE) + onglets Contexte (inventaire) + Prompt (sections collapsibles) — *Phase 4*
+- [x] Routage bootstrap dédié `/bootstrap` + ephemeral conversation deleted on `/start` + redirect `/?welcome=1` — *Phase 5*
+- [x] Markers techniques `[OPEN]` (kickoff bootstrap) et `[FIRST]` (kickoff welcome) — filtrés UI, conservés DB — *Phase 5*
+- [x] Welcome chat pré-nommé « Warm up », auto-titre des autres chats sur 1er message non-marker — *Phase 5*
+- [x] Corpus map `15-corpus-map.md` + auto-extraction du 1er heading dans le marker `<!-- file — Titre -->` — *Phase 5*
+- [x] KickoffProgress (séquence scriptée 1er tour) + ThinkingIndicator (random court autres tours) — *Phase 5*
+- [x] Posture anti-IA-cliché (no « absolument », no disclaimers défensifs ; « pas ChatGPT » mentionné une seule fois au [FIRST]) — *Phase 5*
+- [x] Anglais en aparté (Brits-en-France, intraduisible) ; tutoiement par défaut — *Phase 5*
+- [x] Format des réponses : court par défaut, propose de creuser, clarifications sur ambiguïté, chat ≠ doc generator — *Phase 5*
+- [x] Bootstrap UX serré : meta-clair, signal-aware (lecture des cues d'arrêt), soft cap 2-3 tours — *Phase 5*
+- [x] `npm run clean-chats` script + DB wipée pour le launch — *Phase 5*
 
 ***
-*Last updated: 2026-04-29 (Phase 3 partiel — auth + storage prêts, deploy en attente)*
+*Last updated: 2026-04-29 (Phase 5 closed — prêt à envoyer à Chloë)*

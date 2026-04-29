@@ -89,6 +89,7 @@ npm run build        # next build (Turbopack)
 npm run start        # next start
 npm run lint         # eslint
 npm run sync-prep    # uploads MCF_PREP_DIR/**.md to Vercel Blob under _prep/
+npm run clean-chats  # wipes the chats table (cascades messages)
 ```
 
 ## Known audit findings (dev-only, not exploitable)
@@ -108,9 +109,27 @@ Both are moderate severity advisories on dev-time tooling, no shipped impact.
 
 ## Wired in Phase 3
 
-- **Vercel Blob** (private store) for the private prep corpus. `lib/system-prompt.ts` walks `_prep/` recursively (subdirs included) and supports both fs (local dev via `MCF_PREP_DIR`) and Blob (prod) paths, with a 5-min in-memory cache on the Blob path.
+- **Vercel Blob** (private store) for the private prep corpus. `lib/system-prompt.ts` walks `_prep/` recursively (subdirs included) and supports both fs (local dev via `MCF_PREP_DIR`) and Blob (prod) paths, with a 5-min in-memory cache on the Blob path. Private blobs read via `get(pathname, { access: "private" })` (signed `downloadUrl` doesn't authenticate).
 - `scripts/sync-prep.ts` (run via `npm run sync-prep`) — uploads local `MCF_PREP_DIR/**.md` to Blob and prunes orphans.
 - **Custom passcode auth** — `middleware.ts` (Edge) gates the app via signed HMAC cookie; `/login` page; `/api/login`, `/api/logout` route handlers. Uses `lib/auth.ts` (Web Crypto, no `node:crypto`).
+
+## Wired in Phase 4 (UI integration)
+
+- **`next-themes` for palette** (5 themes : Séminaire / Sobre / Poudré / Nuit / Shiny) + custom hook in `ThemePicker.tsx` for mode (light / dark / auto via `localStorage["klowi.mode"]` + `.dark` class on `<html>`). 10 token sets in `app/globals.css`.
+- **Fonts**: Instrument Sans (UI), Instrument Serif (display + italic accents), Newsreader (prose Séminaire/Nuit), JetBrains Mono (labels). All via `next/font/google`.
+- **Components**: `Brand`, `Sidebar` (collapsible desktop + mobile drawer), `ChatListItem` (rename inline + 3-dot menu), `MessageBubble` (markdown via `react-markdown` + `remark-gfm`, em/strong driven by CSS vars for Shiny highlighter effect), `StreamingDots`, `ThemePicker` (popover swatches + light/dark/auto toggle), `KickoffProgress` (scripted progressive sequence), `ThinkingIndicator` (random short phrase).
+- **Sidebar parti pris**: « cahier de notes », time-bucket grouping (cette semaine / semaine passée / plus tôt), 4px vertical rule for active chat (no filled background).
+- **Brand mark**: `CC · MCF · PREP COMPANION` mono uppercase, tracking-led (0.18em → 0.24em), text-muted. Discreet system label vs. hero brand statement.
+- **`/admin` route**: Two-tier auth (app passcode via middleware + `ADMIN_PASSCODE` cookie). Two tabs : `Contexte` (file inventory grouped by source) + `Prompt` (collapsible sections with raw content). Read-only v1.
+
+## Wired in Phase 5 (bootstrap & companion behavior)
+
+- **`/bootstrap` route** (separate from `/`) — auto-greets via `[OPEN]` marker, ephemeral (deleted on `/start`), redirects to `/?welcome=1`.
+- **`/?welcome=1` flow** — Chat.tsx fires `[FIRST]` marker, model produces enriched welcome message, chat pre-named « Warm up ».
+- **Markers** `[OPEN]` and `[FIRST]` — kept in DB for API alternation, filtered server-side in `/api/chat/history` for UI display.
+- **`setTitleIfDefault`** — auto-titles chats on first non-marker user message.
+- **Corpus map** `context/prompt/15-corpus-map.md` — manifest precedes the 23+ corpus files. Plus `extractFirstHeading()` in `lib/system-prompt.ts` injects the file's H1/H2/H3 into the section comment marker.
+- **`scripts/clean-chats.ts`** (run via `npm run clean-chats`) — wipe `chats` table.
 
 ## Env vars (full list)
 
@@ -123,6 +142,7 @@ Both are moderate severity advisories on dev-time tooling, no shipped impact.
 | `APP_PASSCODE` | yes | Shared passcode for `/login`. |
 | `AUTH_SECRET` | yes | HMAC-SHA256 key for the session cookie. ≥ 16 chars, generate via `openssl rand -hex 32`. |
 | `MCF_PREP_DIR` | dev | Absolute path to private prep corpus on local fs. When unset (prod), runtime fetches from Blob. |
+| `ADMIN_PASSCODE` | yes | Separate passcode for `/admin`. |
 | `DEFAULT_USER_ID` | optional (default `chloe`) | Single-tenant chat ownership |
 | `VERCEL_OIDC_TOKEN` | auto | Vercel-injected, used for some integrations |
 

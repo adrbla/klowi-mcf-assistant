@@ -2,6 +2,80 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-04-29 — Phase 3 + 4 + 5 closed : prêt à envoyer à Chloë (Adrien B.)
+
+**Goal**: clore l'arc « scaffold → app utilisable par Chloë sans assistance ». Cette session a tout couvert : provisioning final, intégration design, bootstrap UX, admin, corpus map, comportement de la companion.
+
+### Plumbing infra (suite Phase 3)
+
+- **Vercel Blob (private store)** provisionné via marketplace Neon-style. 16 fichiers `.md` du `_prep/` synchronisés via `npm run sync-prep`.
+- **`vercel link` + `vercel env pull`** pour aligner le local au projet Vercel.
+- **`drizzle-kit push`** pour appliquer le schéma (`chats`, `messages`) sur Neon.
+- **Passcode auth** : middleware + cookie HMAC, `lib/auth.ts`, `/api/login`, `/api/logout`. Marche sur free tier, branding custom, pas de Vercel Password Protection.
+- **Custom domain** `klowi.dooloob.com` aliasé.
+- **Permission rule** Claude Code locale (`.claude/settings.local.json`) pour autoriser `Bash(git push:*)` — agent peut désormais pousser direct sur main pour ce repo.
+- **`vercel --prod --force`** plusieurs fois après ajout d'env vars (Vercel n'auto-redéploie pas sur ajout d'env, il faut forcer).
+
+### Phase 4 — UI
+
+- **Brief design** rédigé dans `context/references/brief_ui_klowi.md` (157 lignes : voix de marque, 5 surfaces, anti-patterns, process « 5 thèmes en parallèle » + format de livraison technique).
+- **Brief envoyé à Claude Design**, retour reçu : package handoff complet (5 thèmes × light/dark, sidebar collapsible « cahier de notes », chat surface, login).
+- **5 thèmes intégrés** : Séminaire (académique sans cliché terracotta) / Sobre (Linear/Vercel) / Poudré (girly rose comme papier) / Nuit bleue (Pléiade) / Shiny (cobalt + jaune signal éditorial pop). 10 jeux de variables CSS dans `app/globals.css`. Théming via `next-themes` pour la palette + custom hook pour le mode (light/dark/auto via `localStorage["klowi.mode"]` + classe `.dark`).
+- **Composants posés** : `Brand`, `Sidebar` (collapsible desktop + drawer mobile), `ChatListItem` (rename inline + menu), `ThemePicker` (popover 5 swatches + toggle mode), `MessageBubble` (markdown + Shiny `em`/`strong` style), `StreamingDots` (3 barres pulsées), `KickoffProgress` (séquence scriptée premier tour), `ThinkingIndicator` (phrase random pour les autres tours).
+- **Sidebar parti pris** : groupement temporel (cette semaine / semaine passée / plus tôt) dérivé du `updatedAt`, filet vertical 4px pour active chat, theme picker en bas. Pas une « thread list ChatGPT ».
+- **Brand pivot** : `Klowi MCF` (italic serif hero) → `CC · MCF · PREP COMPANION` (mono uppercase, tag discret, tracking-led). « Klowi » = surnom phonétique de **Chloë**, jamais le nom de la companion.
+- **Page /admin** posée : auth séparée via `ADMIN_PASSCODE` + cookie `klowi-admin`. Deux onglets : **Contexte** (inventaire des sources avec sizes/tokens) + **Prompt** (sections collapsibles avec contenu en `<pre>`). Read-only pour v1.
+
+### Phase 5 — Bootstrap & companion
+
+- **Brief PO `brief_assistante_chloe_mcf.md`** intégré dans `00-identity.md` + `10-posture.md`. Pivot complet : pas un coach, **une companion / pote** ; relation horizontale ; ton chaud + clair + sobre ; exigence implicite ; 5 modes (Clarification / Inspiration / Drill / Feedback / Cadrage) ; ne psychologise jamais ; contexte perso jamais évoqué spontanément.
+- **Routage bootstrap** : `/bootstrap` slug dédié (sans sidebar) → companion auto-greete via marker `[OPEN]` (pas de message à taper côté Chloë). Sur `/start` : conversation **supprimée** (éphémère) + flag `klowi.bootstrap.done` posé + redirect vers `/?welcome=1`. Sur `/`, marker `[FIRST]` déclenche un message d'accueil enrichi (qui-je-suis / pas-ChatGPT / ce-que-j'ai-en-main / par-quoi-on-commence). Welcome chat pré-nommé **« Warm up »**.
+- **Markers techniques** `[OPEN]` et `[FIRST]` filtrés de l'UI mais conservés en DB pour l'alternance user/assistant côté Anthropic.
+- **Auto-titre des chats** : `setTitleIfDefault` qui ne fire que si le titre est encore le défaut (« Nouvelle conversation »). Skip pour markers. Le 1er message non-marker dérive le titre (60 chars max).
+- **Corpus map `15-corpus-map.md`** : TOC manuel des 23+ fichiers (CVs / DR / fiches / Grenoble / Strasbourg / transversal) avec notes sur les doublons intentionnels. **Plus** auto-extraction du 1er heading H1/H2/H3 dans le marker `<!-- file.md — Titre extrait -->` côté `lib/system-prompt.ts`. Zéro maintenance.
+- **Bootstrap UX serré après tests live** :
+  - Tutoiement par défaut dès le 1er message.
+  - Premier message en **une phrase de présentation** (pas de meta, pas de `/start`). Bilingue (FR + EN sentence en continuité).
+  - `/start` glissé au **2e message** (après le nom).
+  - Soft cap : max 2-3 tours de cadrage après l'intro.
+  - Lecture des **signaux d'arrêt** (« on verra à l'usage », « je ne sais pas trop ») : protocole 4 étapes (acquiesce / ne pousse pas / rappelle `/start` / rends la main).
+- **Posture anti-IA-cliché** : Chloë est réfractaire à l'IA. Pas de tics « absolument ! », « ravie de t'accompagner », « excellente question ! ». Pas de disclaimer défensif. Une seule mention « pas ChatGPT, calibrée pour cette mission » au `[FIRST]`, jamais répétée.
+- **Anglais en aparté** : Chloë est britannique en France, peut glisser de l'anglais (bonding Brits-en-France, ou intraduisible). Companion peut suivre dans le même registre, ponctuellement, sans basculer tout en anglais. Code « Brits-en-France » : si elle laisse poindre l'agacement classique vis-à-vis des français « arrogants », companion entend / sourit / hoche, sans en faire un sujet.
+- **Format des réponses** : commence court par défaut, **propose de creuser** plutôt que de tartiner. Sujet nouveau → vérifie l'angle d'abord. Demande ambiguë → 2-3 questions de clarification. **Chat = chat, pas un éditeur de docs** ; copy-paste OK ; si livrable structuré utile, **suggérer à Adrien d'ajouter une feature `.md`** (loggé en backlog).
+
+### Outils additionnels posés
+
+- `npm run clean-chats` — wipe la table `chats` (cascade messages). Déjà roulé en fin de session pour partir propre.
+- KickoffProgress (séquence) vs ThinkingIndicator (random court) — différencier le 1er tour (slow, ~10s, séquence rassurante) des suivants (~1-2s avec cache, phrase courte unique).
+
+### Bugs trouvés et corrigés en live
+
+- Symlink `mcf/` → Drive a fait crasher Turbopack au build. Fix : path lu depuis env var `MCF_PREP_DIR` au lieu d'être en dur.
+- `glossary.md` symlink dangling → supprimé.
+- Vercel CLI uploadait le symlink `mcf` même gitignored → ajout `.vercelignore`.
+- Blob private = `fetch(b.downloadUrl)` renvoie 403. Switch vers `get(pathname, { access: "private" })` qui passe par le SDK auth.
+- Stale `klowi.chatId` en localStorage causait 404 sur `/api/chat/history` qui bloquait le welcome kickoff. Fix : clear localStorage + state au 404.
+- ANTHROPIC_API_KEY pasted en clair dans la conv (incident léger) → rotation de clé immédiate.
+
+### État au moment de fermer
+
+- 17 commits poussés sur main, tous deployés.
+- DB wipée (0 chats).
+- URL ready pour Chloë : `https://klowi.dooloob.com/bootstrap`.
+- Auditions à 13 jours (Strasbourg ~11 mai, Grenoble 12 mai).
+
+### Open questions
+
+**For PO** :
+
+- **Retour de Chloë** sur le 1er échange : tone, friction, perception « pas ChatGPT ». Si elle ressent du « scripté », on serrera la posture.
+- **Cross-session memory** (en backlog Now) : pertinent à mettre en place avant qu'elle accumule plusieurs sessions, pour que la companion ait une notion des autres conversations. Sinon chaque nouvelle conv repart à zéro côté contexte conversationnel.
+- **Page /logs + numéro de version visible** (en backlog Now) : à wirer dès qu'une 1re modif post-launch est faite, pour que Chloë puisse demander à la companion « il y a eu un changement ? ».
+- **Production de docs** (`.md` generation) : Chloë va-t-elle vouloir générer des fiches autonomes ? À évaluer après quelques sessions. Le prompt actuel **suggère explicitement** à la companion de proposer cette feature à toi si ça vient.
+- **Feedback bootstrap** : si elle reste bloquée dans le bootstrap au-delà de 2-3 tours, signal qu'on doit serrer encore. Si elle arrive à `/start` rapidement, c'est calibré.
+
+***
+
 ## 2026-04-29 — Phase 3 (en cours) : storage Blob + passcode auth (Adrien B.)
 
 **Goal**: rendre l'app deployable. (1) faire arriver le contenu privé `_prep/` jusqu'à Vercel sans le commit dans Git ; (2) gater l'accès derrière un passcode.
