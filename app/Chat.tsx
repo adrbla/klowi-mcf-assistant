@@ -5,11 +5,14 @@ import { Brand } from "./components/Brand";
 import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import type { ChatSummary } from "./components/ChatListItem";
+import { BootstrapView } from "./BootstrapView";
 
 const CHAT_ID_KEY = "klowi.chatId";
+const BOOTSTRAP_DONE_KEY = "klowi.bootstrap.done";
 
 export default function Chat() {
   const [hydrated, setHydrated] = useState(false);
+  const [bootstrapDone, setBootstrapDone] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,12 +55,27 @@ export default function Chat() {
 
   // ── hydrate from localStorage on mount (one-shot)
   useEffect(() => {
+    const done = localStorage.getItem(BOOTSTRAP_DONE_KEY) === "1";
+    setBootstrapDone(done);
+    if (!done) {
+      // Bootstrap not done — defer to BootstrapView, which manages its own state.
+      setHydrated(true);
+      return;
+    }
     const stored = localStorage.getItem(CHAT_ID_KEY);
     setChatId(stored);
     refreshChats();
     if (stored) loadHistory(stored);
     setHydrated(true);
   }, [refreshChats, loadHistory]);
+
+  const handleBootstrapComplete = useCallback(() => {
+    setBootstrapDone(true);
+    setChatId(null);
+    setMessages([]);
+    refreshChats();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [refreshChats]);
 
   // ── auto-scroll on new messages / streaming chunks
   useEffect(() => {
@@ -186,6 +204,10 @@ export default function Chat() {
   if (!hydrated) {
     // suppress hydration mismatch w/ next-themes
     return <div className="min-h-dvh bg-background" />;
+  }
+
+  if (!bootstrapDone) {
+    return <BootstrapView onComplete={handleBootstrapComplete} />;
   }
 
   const activeTitle =
