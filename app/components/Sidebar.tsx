@@ -183,7 +183,7 @@ export function Sidebar({
         >
           {chats.length === 0 ? (
             <div className="px-6 py-8 text-muted font-prose italic text-[14px] leading-[1.5]">
-              Rien encore. Tu peux écrire ce qui te traverse — Klowi est là.
+              Rien encore. C'est ouvert dès que tu veux.
               <span className="block font-mono not-italic text-[11px] tracking-[0.14em] uppercase text-faint mt-2.5">
                 ↓ ouvre une conversation
               </span>

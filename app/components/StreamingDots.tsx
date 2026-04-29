@@ -2,7 +2,7 @@ export function StreamingDots({ className = "" }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-end gap-[2px] h-3 ml-1.5 align-middle ${className}`}
-      aria-label="Klowi écrit"
+      aria-label="Réponse en cours"
       role="status"
     >
       <i

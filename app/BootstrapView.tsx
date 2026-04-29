@@ -19,21 +19,11 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const kickedOffRef = useRef(false);
 
-  // ── hydrate: load any prior bootstrap-in-progress state
+  // ── always start the bootstrap fresh: any prior chatId is treated as
+  // belonging to a previous (incomplete or stale) attempt and ignored.
   useEffect(() => {
-    const stored = localStorage.getItem(CHAT_ID_KEY);
-    if (!stored) {
-      setHydrated(true);
-      return;
-    }
-    setChatId(stored);
-    fetch(
-      `/api/chat/history?chatId=${encodeURIComponent(stored)}`,
-      { cache: "no-store" },
-    )
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Message[]) => setMessages(data))
-      .finally(() => setHydrated(true));
+    localStorage.removeItem(CHAT_ID_KEY);
+    setHydrated(true);
   }, []);
 
   const sendMessage = useCallback(
@@ -94,14 +84,12 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
     [chatId],
   );
 
-  // ── auto-kickoff once on first arrival (no chatId, no messages)
+  // ── auto-kickoff once on mount (after fresh-start hydration)
   useEffect(() => {
     if (!hydrated || kickedOffRef.current) return;
-    if (messages.length > 0) return;
-    if (chatId) return; // resuming an in-progress bootstrap, no need to kickoff
     kickedOffRef.current = true;
     void sendMessage(KICKOFF, true);
-  }, [hydrated, messages.length, chatId, sendMessage]);
+  }, [hydrated, sendMessage]);
 
   // ── auto-scroll
   useEffect(() => {
@@ -161,11 +149,6 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
           <div className="mb-2">
             <Brand size="xl" />
           </div>
-          {visibleMessages.length === 0 && isStreaming && (
-            <p className="font-prose italic text-[16px] leading-[1.5] text-muted">
-              Klowi se présente…
-            </p>
-          )}
           {visibleMessages.map((m, i) => (
             <MessageBubble
               key={i}
@@ -196,7 +179,7 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isStreaming}
-            placeholder={isStreaming ? "Klowi répond…" : "réponds à Klowi…"}
+            placeholder={isStreaming ? "…" : "réponds…"}
             className="flex-1 bg-transparent border-none outline-none text-foreground text-[14.5px] placeholder:text-faint disabled:cursor-not-allowed"
             autoFocus
           />

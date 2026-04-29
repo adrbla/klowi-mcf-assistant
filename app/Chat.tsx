@@ -319,7 +319,7 @@ export default function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isStreaming}
-              placeholder={isStreaming ? "Klowi répond…" : "écrire à Klowi…"}
+              placeholder={isStreaming ? "…" : "écris ici…"}
               className="flex-1 bg-transparent border-none outline-none text-foreground text-[14.5px] placeholder:text-faint disabled:cursor-not-allowed"
               autoFocus
             />

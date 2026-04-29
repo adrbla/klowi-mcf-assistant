@@ -32,7 +32,7 @@ export function MessageBubble({
     <article className="max-w-full">
       {timestamp && (
         <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-faint mb-2">
-          Klowi · {timestamp}
+          {timestamp}
         </div>
       )}
       <div className="prose-klowi text-foreground text-[15px] leading-[1.6]">
