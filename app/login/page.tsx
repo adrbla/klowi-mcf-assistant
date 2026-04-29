@@ -14,14 +14,11 @@ export default async function LoginPage({
         className="w-full max-w-sm space-y-6"
       >
         <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-            Klowi
-          </p>
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            MCF Coach
+            Klowi
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Accès réservé. Entre le passcode pour continuer.
+            Accès réservé.
           </p>
         </div>
 

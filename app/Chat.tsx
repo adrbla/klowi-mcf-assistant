@@ -149,14 +149,9 @@ export default function Chat() {
     <div className="flex flex-1 flex-col">
       <header className="border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-              Klowi
-            </p>
-            <h1 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
-              MCF Coach
-            </h1>
-          </div>
+          <h1 className="text-sm font-medium tracking-wide text-zinc-950 dark:text-zinc-50">
+            Klowi
+          </h1>
           <button
             type="button"
             onClick={handleNewChat}

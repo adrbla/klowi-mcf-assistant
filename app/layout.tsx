@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Klowi · MCF Coach",
-  description: "Assistante de préparation aux auditions MCF",
+  title: "Klowi",
+  description: "Klowi",
 };
 
 export default function RootLayout({
