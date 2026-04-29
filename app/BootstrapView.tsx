@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Brand } from "./components/Brand";
 import { MessageBubble, type Message } from "./components/MessageBubble";
+import { KickoffProgress } from "./components/KickoffProgress";
 
 const KICKOFF = "[OPEN]";
 const START_COMMAND = "/start";
@@ -149,17 +150,24 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
           <div className="mb-2">
             <Brand size="xl" />
           </div>
-          {visibleMessages.map((m, i) => (
-            <MessageBubble
-              key={i}
-              message={m}
-              isStreaming={
-                isStreaming &&
-                i === visibleMessages.length - 1 &&
-                m.role === "assistant"
-              }
-            />
-          ))}
+          {visibleMessages.map((m, i) => {
+            const isLast = i === visibleMessages.length - 1;
+            const isWaitingFirstChunk =
+              isStreaming &&
+              isLast &&
+              m.role === "assistant" &&
+              m.content === "";
+            if (isWaitingFirstChunk) {
+              return <KickoffProgress key={i} />;
+            }
+            return (
+              <MessageBubble
+                key={i}
+                message={m}
+                isStreaming={isStreaming && isLast && m.role === "assistant"}
+              />
+            );
+          })}
         </div>
       </div>
 
