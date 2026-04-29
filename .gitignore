@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+/coverage
+
+# Vercel
+.vercel
+
+# Certs
+*.pem
+
+# OS metadata
+.DS_Store
+._*
+Icon?
+Thumbs.db
+
+# Cowork / Nexus templates (uploaded per session, never committed)
+CLAUDE-CW.md
+devs-template.md
+
+# Private content (symlink to local files)
+mcf
+mcf/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
