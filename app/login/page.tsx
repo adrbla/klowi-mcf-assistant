@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Brand } from "../components/Brand";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Honor the `next` query param the middleware sets when it redirects
+  // unauthenticated users here. Restricted to same-origin relative paths.
+  const [nextPath, setNextPath] = useState<string>("/");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const candidate = new URLSearchParams(window.location.search).get("next");
+    if (candidate && candidate.startsWith("/") && !candidate.startsWith("//")) {
+      setNextPath(candidate);
+    }
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,12 +28,13 @@ export default function LoginPage() {
       const r = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode: code }),
+        body: JSON.stringify({ passcode: code, next: nextPath }),
       });
       if (!r.ok) {
         setError("Ce n'est pas le bon code.");
       } else {
-        router.replace("/");
+        // Hard navigation so the new auth cookie is sent on the next request.
+        window.location.assign(nextPath);
       }
     } catch {
       setError("Quelque chose n'a pas marché.");
