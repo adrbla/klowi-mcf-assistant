@@ -10,6 +10,7 @@
  */
 
 export const AUTH_COOKIE_NAME = "klowi-auth";
+export const ADMIN_COOKIE_NAME = "klowi-admin";
 export const AUTH_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30; // 30 days
 
 function bytesToHex(bytes: ArrayBuffer): string {
@@ -83,6 +84,42 @@ export async function verifyToken(token: string | undefined): Promise<boolean> {
 /** Compare provided passcode to APP_PASSCODE in constant time. */
 export function checkPasscode(provided: string): boolean {
   const expected = process.env.APP_PASSCODE;
+  if (!expected) return false;
+  return safeEqual(provided, expected);
+}
+
+/* ───────────────────────── Admin auth (separate gate) ───────────────────────── */
+
+/** Build a fresh signed admin token. Same secret, distinct payload prefix. */
+export async function issueAdminToken(): Promise<string> {
+  const expiry = Date.now() + AUTH_COOKIE_MAX_AGE_S * 1000;
+  const payload = `admin.${expiry}`;
+  const sig = await hmac(payload);
+  return `${payload}.${sig}`;
+}
+
+/** Verify an admin cookie value. */
+export async function verifyAdminToken(token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  const lastDot = token.lastIndexOf(".");
+  if (lastDot <= 0 || lastDot === token.length - 1) return false;
+  const payload = token.slice(0, lastDot);
+  const sig = token.slice(lastDot + 1);
+  if (!payload.startsWith("admin.")) return false;
+  const expiry = Number(payload.slice("admin.".length));
+  if (!Number.isFinite(expiry) || expiry < Date.now()) return false;
+  let expected: string;
+  try {
+    expected = await hmac(payload);
+  } catch {
+    return false;
+  }
+  return safeEqual(sig, expected);
+}
+
+/** Compare provided passcode to ADMIN_PASSCODE in constant time. */
+export function checkAdminPasscode(provided: string): boolean {
+  const expected = process.env.ADMIN_PASSCODE;
   if (!expected) return false;
   return safeEqual(provided, expected);
 }
