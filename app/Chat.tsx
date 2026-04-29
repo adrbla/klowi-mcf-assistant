@@ -42,6 +42,15 @@ export default function Chat() {
         `/api/chat/history?chatId=${encodeURIComponent(id)}`,
         { cache: "no-store" },
       );
+      if (r.status === 404) {
+        // Chat is gone (deleted server-side, or localStorage points at a
+        // chat that no longer exists). Reset state + storage so the rest
+        // of the app behaves as a fresh visit.
+        setMessages([]);
+        setChatId(null);
+        localStorage.removeItem(CHAT_ID_KEY);
+        return;
+      }
       if (!r.ok) {
         setMessages([]);
         return;
