@@ -1,0 +1,9 @@
+# Private prep symlink (target only exists on developer machines).
+# In production, the assistant fetches private prep content from Vercel Blob.
+mcf
+mcf/
+
+# Local-only state
+.env.local
+.next
+node_modules
