@@ -1,5 +1,45 @@
 # Decisions – klowi-mcf-assistant
 
+## 2026-04-29 – Private prep storage on Vercel: Blob (private store)
+
+**Context**: The private corpus (`mcf/_prep/`) lives in a Drive-symlinked folder locally. Vercel deploys can't follow that symlink, and we want the strategic content out of Git permanently.
+
+**Decision**: Store private prep content in **Vercel Blob** (private store, marketplace integration). Sync local → Blob via a one-shot script (`npm run sync-prep`); runtime fetches from Blob via signed `downloadUrl` (5-minute in-memory cache per server instance).
+
+**Rejected alternatives**:
+- Commit `_prep/` to the repo (private GitHub) — reverses the Phase-1 public/private split decision. Feasible but undoes deliberate hardening.
+- Vercel Blob in **public** mode (default) — slightly simpler but URL = obscurity-as-security only. Private mode forces every read through an authenticated path.
+- S3 / Cloudflare R2 — more flexible but adds a separate provider, more secrets, no integration with Vercel project linking.
+
+**Consequences**:
+- Local dev: prefer fs via `MCF_PREP_DIR` (faster iteration, no network).
+- Prod: only `BLOB_READ_WRITE_TOKEN` set → fetch from Blob.
+- Update workflow: PO edits Drive → runs `npm run sync-prep` → done. No git commit, no redeploy needed (5-min cache TTL).
+- Private blobs require `downloadUrl` (signed, ephemeral) not `url` (public). Already wired in `lib/system-prompt.ts`.
+- Cold starts pay one round-trip per blob — mitigated by parallel `Promise.all` and the 5-min cache.
+
+***
+
+## 2026-04-29 – Auth: custom passcode + HMAC-signed cookie (not Vercel Password Protection)
+
+**Context**: Custom domain `klowi.dooloob.com` is wired (CNAME). Need to gate access for Chloë and Adrien only. Vercel Password Protection requires the Pro plan; the project has been in flux on plan tier and we wanted independence.
+
+**Decision**: Custom auth — `middleware.ts` gates all routes except `/login`, `/api/login`, `/api/logout`, and static assets. A signed cookie (HMAC-SHA256 via Web Crypto, edge-compatible) carries the session. `APP_PASSCODE` is the shared passcode, `AUTH_SECRET` is the HMAC key.
+
+**Rejected alternatives**:
+- **Vercel Password Protection** — works, but requires Pro tier and the login screen is Vercel-branded (no custom branding for Klowi).
+- **Magic link via Resend + Auth.js** — better UX for adding more users later, but ~2h of setup vs ~30 min for the passcode pattern.
+- **IP allowlist / obscure URL** — fragile (Chloë changes networks; URL can be shared accidentally).
+
+**Consequences**:
+- Free-tier compatible.
+- Custom branded `/login` page.
+- Cookie expires in 30 days (configurable via `AUTH_COOKIE_MAX_AGE_S`).
+- All API routes (including `/api/chat`) return 401 JSON when unauthed; HTML routes redirect to `/login?next=...`.
+- Migration path: when multi-user is needed, swap `lib/auth.ts` for Auth.js without touching the chat code.
+
+***
+
 ## 2026-04-29 – Private prep corpus path injected via env var (`MCF_PREP_DIR`)
 
 **Context**: Phase 2 build broke when Turbopack walked `path.join(process.cwd(), "mcf", "AUDITIONS (!!)", "_prep")` as a literal directory reference and crossed the Google Drive symlink boundary, panicking on what it perceived as an out-of-root symlink.

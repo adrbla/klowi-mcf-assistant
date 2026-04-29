@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync-prep": "node --env-file=.env.local --experimental-strip-types scripts/sync-prep.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@vercel/blob": "^2.3.3",
     "@vercel/postgres": "^0.10.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

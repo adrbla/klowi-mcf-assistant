@@ -22,21 +22,25 @@ Full breakdown: [`context/tech-stack.md`](./context/tech-stack.md).
 # 1. Install
 npm install
 
-# 2. Env
-cp .env.local.example .env.local
-# Fill in ANTHROPIC_API_KEY (and POSTGRES_URL once Vercel Postgres is provisioned)
-
-# 3. Run
-npm run dev   # http://localhost:3000
-```
-
-### Connecting to Vercel Postgres (later, when wired)
-
-```bash
-npx vercel link
+# 2. Pull env from Vercel
+npx vercel link        # one-time, links the local repo to the Vercel project
 npx vercel env pull .env.local
-npx drizzle-kit push   # apply schema to the DB
+# Then add the local-only var:
+echo 'MCF_PREP_DIR="/absolute/path/to/_prep"' >> .env.local
+
+# 3. (First time only) Apply DB schema
+npx drizzle-kit push
+
+# 4. Sync the private prep corpus to Vercel Blob (so prod can fetch it)
+npm run sync-prep
+
+# 5. Run
+npm run dev   # http://localhost:3000 (or 3001 if 3000 is taken)
+# → /login, enter APP_PASSCODE
 ```
+
+When you edit prep content in Drive, re-run `npm run sync-prep` to push to Blob.
+Local dev reads from `MCF_PREP_DIR` directly (no sync needed for local), but prod always reads from Blob.
 
 ---
 
@@ -48,6 +52,7 @@ npx drizzle-kit push   # apply schema to the DB
 | `npm run build` | Production build |
 | `npm run start` | Run the production build |
 | `npm run lint` | ESLint |
+| `npm run sync-prep` | Upload `MCF_PREP_DIR/**.md` to Vercel Blob (`_prep/<relPath>`) |
 
 ---
 
@@ -55,7 +60,19 @@ npx drizzle-kit push   # apply schema to the DB
 
 ```
 app/                 Next.js App Router (routes, layouts, API handlers)
-lib/                 Server-side libs (Anthropic client, Drizzle, prompt assembly)
+  api/chat/          Streaming chat endpoint + history
+  api/login,logout/  Auth endpoints
+  login/             Passcode page
+  Chat.tsx           Client component (chat UI)
+lib/                 Server-side libs
+  anthropic.ts       SDK client
+  auth.ts            Edge-compatible HMAC cookie sign/verify
+  db/                Drizzle schema + queries
+  system-prompt.ts   Assembly (fs or Blob)
+  utils.ts
+middleware.ts        Edge middleware: gates all routes via signed cookie
+scripts/
+  sync-prep.ts       Uploads private corpus to Vercel Blob
 context/             Project state (vision, journal, decisions, backlog, prompts)
   prompt/            System prompt fragments (committed, public-grade)
   references/        Original briefings (CONTEXT-COACH.md)

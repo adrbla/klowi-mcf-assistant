@@ -2,6 +2,44 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-04-29 — Phase 3 (en cours) : storage Blob + passcode auth (Adrien B.)
+
+**Goal**: rendre l'app deployable. (1) faire arriver le contenu privé `_prep/` jusqu'à Vercel sans le commit dans Git ; (2) gater l'accès derrière un passcode.
+
+### Vercel Blob — storage du corpus privé
+
+- PO a provisionné un Blob store (`klowi-mcf-assistant-blob`) en mode **private** depuis le marketplace Vercel. `BLOB_READ_WRITE_TOKEN` auto-injecté dans les env du projet.
+- `lib/system-prompt.ts` retravaillé :
+  - **Walk récursif** des sous-dossiers (`grenoble/`, `strasbourg/`) — le code précédent ne lisait que la racine de `_prep/`.
+  - **Resolver hybride** : `MCF_PREP_DIR` set → fs (local dev, itération rapide) ; sinon `BLOB_READ_WRITE_TOKEN` set → fetch Blob ; sinon vide.
+  - **Cache 5 min en mémoire** côté Blob path pour éviter de re-fetch tous les blobs à chaque turn.
+- `scripts/sync-prep.ts` créé : walk local de `MCF_PREP_DIR`, upload vers Blob avec `addRandomSuffix: false` + `allowOverwrite: true`, prune des orphans qui ne sont plus locaux. Lancé via `npm run sync-prep`.
+- 16 fichiers .md uploadés au premier sync (le corpus complet : `fiche-audition-blanche`, `journal`, `pistes_prep`, `notes-chloe`, + sous-dossiers `grenoble/` et `strasbourg/` avec discours, dossiers stratégiques, questions anticipées, etc.).
+- Pour un Blob **privé**, on ne peut pas lire `b.url` (URL publique non fonctionnelle) — il faut utiliser `b.downloadUrl` (URL signée temporaire). Code adapté.
+
+### Passcode + cookie HMAC
+
+- `lib/auth.ts` : sign/verify HMAC-SHA256 via Web Crypto (edge-compatible, pas de `node:crypto`). Cookie format `<expiry>.<sig>`. Compare-time constant-time pour la signature et le passcode.
+- `middleware.ts` : matcher exclut `/login`, `/api/login`, `/api/logout`, `/_next/`, `/favicon.ico`. Tout le reste est gated. Renvoie `redirect /login?next=...` pour les pages, `401 JSON` pour les API.
+- `app/login/page.tsx` : form passcode minimaliste, gestion des erreurs via `?error=1`.
+- `app/api/login/route.ts` : POST → vérifie passcode → set cookie HttpOnly Secure SameSite=Lax (max-age 30 jours) → 303 vers `next` ou `/`. Validation du `next` (rejette les redirects externes).
+- `app/api/logout/route.ts` : POST/GET → clear cookie → 303 vers `/login`.
+- Smoke test local OK : 6/6 scénarios verts (no cookie → 307, wrong passcode → 303 + erreur, right passcode → 303 + Set-Cookie, cookie → 200 chat, /api/chat sans cookie → 401).
+
+### À faire pour le deploy (avant push)
+
+**For PO** :
+
+1. **Sur Vercel → Settings → Environment Variables, ajouter pour Production + Preview + Development** :
+   - `APP_PASSCODE` : choisis le passcode (ex: une phrase mémorable que tu donnes à Chloë).
+   - `AUTH_SECRET` : généré via `openssl rand -hex 32` côté ton terminal — c'est la clé HMAC qui signe les cookies.
+   - **Important** : ces deux vars doivent être présentes AVANT le push, sinon le 1er request prod renverra 500.
+2. **Custom domain** : `klowi.dooloob.com` est déjà CNAME → vérifier que le projet Vercel l'a bien adopté côté Settings → Domains.
+3. **Push** : moi je commite, toi `! git push origin main`. Vercel auto-deploy.
+4. **Test prod** : aller sur `klowi.dooloob.com` → /login → entrer le passcode → chat doit fonctionner avec contenu Blob.
+
+***
+
 ## 2026-04-29 — Phase 2 : chat live (streaming + DB + caching) (Adrien B.)
 
 **Goal**: passer du squelette à un chat utilisable de bout en bout, branché Anthropic + Postgres + cache.

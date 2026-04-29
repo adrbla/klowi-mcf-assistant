@@ -84,10 +84,11 @@
 ## NPM scripts
 
 ```bash
-npm run dev      # next dev (Turbopack)
-npm run build    # next build (Turbopack)
-npm run start    # next start
-npm run lint     # eslint
+npm run dev          # next dev (Turbopack)
+npm run build        # next build (Turbopack)
+npm run start        # next start
+npm run lint         # eslint
+npm run sync-prep    # uploads MCF_PREP_DIR/**.md to Vercel Blob under _prep/
 ```
 
 ## Known audit findings (dev-only, not exploitable)
@@ -102,8 +103,14 @@ Both are moderate severity advisories on dev-time tooling, no shipped impact.
 - `app/api/chat/route.ts` — streaming endpoint with prompt caching (system + multi-turn breakpoints), web_search tool, adaptive thinking + `effort: medium`, message persistence with token accounting, `preferredRegion: "fra1"`.
 - `app/api/chat/history/route.ts` — rehydration endpoint for the client.
 - Drizzle schema applied to Neon (`chats`, `messages` tables live).
-- System prompt assembly reads `context/prompt/*.md` (public) + `mcf/_prep/**.md` (private, env-resolved path).
+- System prompt assembly reads `context/prompt/*.md` (public) + private corpus (env-resolved path or Blob).
 - `app/Chat.tsx` (client) + `app/page.tsx` (server) — chat UI with markdown, streaming display, `localStorage` chatId persistence.
+
+## Wired in Phase 3
+
+- **Vercel Blob** (private store) for the private prep corpus. `lib/system-prompt.ts` walks `_prep/` recursively (subdirs included) and supports both fs (local dev via `MCF_PREP_DIR`) and Blob (prod) paths, with a 5-min in-memory cache on the Blob path.
+- `scripts/sync-prep.ts` (run via `npm run sync-prep`) — uploads local `MCF_PREP_DIR/**.md` to Blob and prunes orphans.
+- **Custom passcode auth** — `middleware.ts` (Edge) gates the app via signed HMAC cookie; `/login` page; `/api/login`, `/api/logout` route handlers. Uses `lib/auth.ts` (Web Crypto, no `node:crypto`).
 
 ## Env vars (full list)
 
@@ -112,15 +119,16 @@ Both are moderate severity advisories on dev-time tooling, no shipped impact.
 | `ANTHROPIC_API_KEY` | yes | Anthropic API auth (server-only) |
 | `POSTGRES_URL` | yes | Neon connection (Vercel-injected) |
 | `POSTGRES_URL_NON_POOLING` | yes | Direct connection for migrations |
-| `MCF_PREP_DIR` | optional | Absolute path to private prep corpus. Empty = public-only assembly. See `context/decisions.md` for the why. |
+| `BLOB_READ_WRITE_TOKEN` | prod | Vercel Blob token (auto-injected by integration). Used by `sync-prep` and runtime fetch when `MCF_PREP_DIR` is unset. |
+| `APP_PASSCODE` | yes | Shared passcode for `/login`. |
+| `AUTH_SECRET` | yes | HMAC-SHA256 key for the session cookie. ≥ 16 chars, generate via `openssl rand -hex 32`. |
+| `MCF_PREP_DIR` | dev | Absolute path to private prep corpus on local fs. When unset (prod), runtime fetches from Blob. |
 | `DEFAULT_USER_ID` | optional (default `chloe`) | Single-tenant chat ownership |
 | `VERCEL_OIDC_TOKEN` | auto | Vercel-injected, used for some integrations |
 
 ## Not yet wired
 
 - shadcn/ui (will be initialized when first primitive is needed)
-- Vercel Password Protection (set on the Vercel project, not in code)
-- Custom domain `klowi.dooloob.com` (DNS + Vercel domains)
-- Build-time copy of `_prep/` for Vercel deploy (`prebuild` script — Phase 3)
 - Multi-chat sidebar UI (DB is ready, UI is single-chat for now)
-- Admin zone for prompt editing (Phase 3)
+- Admin zone for prompt editing + sync-prep trigger (Phase 3)
+- UI redesign (PO is gathering a "Claude Design" direction)

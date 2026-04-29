@@ -2,11 +2,12 @@
 
 ## Now (immediate priority)
 
-- [ ] **Phase 3 — Build-time copy de `_prep/` pour Vercel** : script `prebuild` qui rsync `mcf/AUDITIONS (!!)/_prep/**.md` → `./prep-build/`, `MCF_PREP_DIR=./prep-build` côté env Vercel. Le mcf symlink ne suit pas le déploiement.
-- [ ] **Phase 3 — Briefs PO intégrés** : compléter `context/prompt/00-identity.md` (questions onboarding), créer `10-coach-behavior.md` (dérivé CONTEXT-COACH), `20-chloe-profile.md` (CV).
-- [ ] **Phase 3 — Custom domain + Password Protection** : `klowi.dooloob.com` côté Vercel + DNS Dooloob, activer Password Protection.
+- [ ] **PO sets `APP_PASSCODE` + `AUTH_SECRET` on Vercel** (Production + Preview + Development) — bloquant pour le 1er deploy fonctionnel.
+- [ ] **Push + premier deploy prod** : `git push origin main` → Vercel auto-deploy → vérifier `klowi.dooloob.com`.
+- [ ] **Phase 3 — Briefs PO intégrés** : `context/prompt/00-identity.md` (questions onboarding), `10-coach-behavior.md` (dérivé CONTEXT-COACH), `20-chloe-profile.md` (CV).
 - [ ] **Phase 3 — Multi-chat sidebar** : DB-side déjà multi, manque l'UI (liste + switch + rename + delete).
-- [ ] **Phase 3 — Admin zone** : interface réservée Adrien pour éditer les fragments de prompt, recharger le contexte, voir le prompt assemblé tel qu'envoyé, suivre les tokens. Sous Vercel Password Protection ou route séparée.
+- [ ] **Phase 3 — Admin zone** : interface réservée PO pour éditer les fragments de prompt, voir le prompt assemblé, déclencher `sync-prep` à distance, suivre les tokens.
+- [ ] **Phase 3 — UI redesign** (PO mentionne "Claude Design") : à attendre, tu reviens avec une direction.
 
 ## Next (upcoming)
 
@@ -44,6 +45,9 @@
 - [x] Chat UI minimaliste avec markdown, streaming, localStorage de chatId — *Phase 2*
 - [x] Path privé via `MCF_PREP_DIR` env var (contournement panic Turbopack) — *Phase 2*
 - [x] Smoke test end-to-end : streaming OK, cache hit confirmé sur tour 2 (18 131 tokens lus) — *Phase 2*
+- [x] Vercel Blob (private store) provisionné, `sync-prep` script, runtime hybrid fs/Blob — *Phase 3*
+- [x] Walk récursif de `_prep/` (sous-dossiers `grenoble/`, `strasbourg/` inclus) — *Phase 3*
+- [x] Passcode auth : middleware + cookie HMAC + /login + /api/{login,logout} — *Phase 3*
 
 ***
-*Last updated: 2026-04-29 (Phase 2 closed)*
+*Last updated: 2026-04-29 (Phase 3 partiel — auth + storage prêts, deploy en attente)*
