@@ -11,6 +11,8 @@
 
 ## Next (upcoming)
 
+- [ ] **Persistance transverse / cross-session memory** — pipeline de summarization à la fin de chaque chat (titre + résumé court + tags), injection dans le system prompt des sessions suivantes (titres + résumés courts seulement, pas les détails). La companion sait qu'elle a *connaissance* d'autres sessions sans en avoir le détail ; elle peut suggérer à Chloë de « repartir de la session X » si ça pertinent. Documenter dans `10-posture.md` côté prompt. Schéma DB : table `chat_summaries (chat_id, title, summary, tags, created_at)`.
+- [ ] **Page logs côté /admin** + **numéro de version discret visible à la companion** — le numéro est injecté dans le system prompt (par ex. `version: 0.X.Y` extrait du package.json ou d'un VERSION file). Permet à Chloë de savoir « si Adrien a fait des modifs depuis la dernière fois » via la companion. La page logs récapitule : commits récents (depuis git ou un changelog), token usage / cache hit ratio par jour, erreurs récentes.
 - [ ] Première session end-to-end validée par Chloë (= bootstrap meta-session live)
 - [ ] Streaming SSE typé (au lieu de text/plain brut) — permettrait de pousser thinking blocks, tool_use events, errors au client
 - [ ] shadcn/ui init quand on a besoin d'un primitive (Dialog, DropdownMenu, etc.)
