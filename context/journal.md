@@ -2,6 +2,64 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-04-29 — Phase 2 : chat live (streaming + DB + caching) (Adrien B.)
+
+**Goal**: passer du squelette à un chat utilisable de bout en bout, branché Anthropic + Postgres + cache.
+
+### Plumbing infra (avant Phase 2 code)
+
+- **Vercel project linké** : `adrien-blaises-projects/klowi-mcf-assistant`, repo GitHub privé.
+- **Neon Postgres provisionné** via le marketplace Vercel (Frankfurt). L'intégration injecte les deux conventions de noms — `POSTGRES_URL` (legacy) et `DATABASE_URL` (Neon). Notre code lit `POSTGRES_URL` ; rien à changer.
+- **Schéma Drizzle pushé** : `chats` + `messages` créées, vérifiées par requête live.
+- **`ANTHROPIC_API_KEY` rotée** (la première a fuité dans une conv, le PO l'a révoquée + recréée → coché Dev/Preview/Prod sur Vercel → re-pull local OK).
+
+### Code livré
+
+- `lib/db/queries.ts` — helpers `createChat`, `listMessages`, `addUserMessage`, `addAssistantMessage`, `touchChat`.
+- `app/api/chat/route.ts` — POST streaming :
+  - `messages.stream()` Anthropic, modèle `claude-sonnet-4-6`, `max_tokens: 8192`.
+  - **Adaptive thinking** + `effort: "medium"`.
+  - **Web search** : tool natif `web_search_20260209`.
+  - **Caching** : `cache_control: ephemeral` à la fois sur le bloc système ET en top-level (couvre system + history multi-tours).
+  - Persiste user msg avant stream, assistant msg après `finalMessage()`, avec token accounting (input/output/cache_creation/cache_read).
+  - `preferredRegion: "fra1"` pour matcher la région Neon → minimise la latence DB.
+  - Réponse : `Content-Type: text/plain` streaming + headers `X-Chat-Id` / `X-New-Chat`.
+- `app/api/chat/history/route.ts` — GET pour rehydration côté client à l'ouverture de page.
+- `app/Chat.tsx` (client) + `app/page.tsx` (server shell) — UI minimaliste : header, liste de messages, textarea auto-resize, streaming display, markdown rendu (sans plugin typography, composants stylés inline). `chatId` persisté dans `localStorage`. Bouton "Nouvelle conversation".
+
+### Dur de la session : Turbopack + symlink Google Drive
+
+- Le build a planté : `Symlink mcf/AUDITIONS (!!)/_prep/README-KLOWI.md is invalid, it points out of the filesystem root`. Turbopack analyse statiquement les `path.join(process.cwd(), "mcf", ...)` et tente de tracer le dossier comme asset au build → Google Drive croisant le filesystem root, panic.
+- **Fix** : `lib/system-prompt.ts` lit le path privé via `process.env.MCF_PREP_DIR` (pas de chaîne littérale du chemin dans le code source). Ajouté `MCF_PREP_DIR=...` à `.env.local` (gitignored) + entrée vide dans `.env.local.example`.
+- À noter pour Vercel : il faudra copier `_prep/` dans les build artifacts via un script `prebuild` (Phase 3) et pointer `MCF_PREP_DIR` en conséquence.
+
+### Smoke test end-to-end
+
+- Tour 1 : envoi de "Bonjour, présente-toi rapidement." → streaming OK, chat créé en DB, **18 131 tokens écrits dans le cache** (= taille de notre system prompt actuel).
+- Tour 2 : envoi de "Va pour Iris. Quelle est la question la plus piégée à Grenoble ?" → **18 131 tokens lus du cache**, 506 nouveaux écrits (le précédent tour ajouté à la prefix), 3 tokens "frais". **Cache opérationnel.**
+- L'assistante montre une vraie compétence métier : a parlé de LEA, ESP, du contexte agrégation, a proposé spontanément une question d'audition pertinente. Le `00-identity.md` a fonctionné — elle a proposé Vera/Nora/Ada/Iris/Clio.
+
+### Decisions notables
+
+- **Path privé via env var** : structurel, ajouté à `decisions.md`. Pas un workaround temporaire — c'est le bon pattern pour une source de prompt qui peut bouger entre dev local (Drive) et prod (build artifact).
+
+### Ce qui reste
+
+**For PO** :
+- **Brief `00-identity.md`** : tes 3-4 questions exactes pour le mini-onboarding du tout premier tour.
+- **Brief `10-coach-behavior.md`** : version dérivée de `CONTEXT-COACH.md` avec ce que tu veux garder/affiner (modes, ton, tabous).
+- **Brief `20-chloe-profile.md`** : CV analytique à intégrer côté commit.
+- **Vérifier le live** : tu peux ouvrir `npm run dev` localement et essayer une conv avec Chloë (ou seul) pour voir si le ressenti tient.
+
+**Tech à venir** :
+- **Build-time copy** de `_prep/` pour Vercel deploy : script `prebuild` qui rsync le contenu dans `./prep-build/` (commité ? non — gitignored, juste utilisé au build) et set `MCF_PREP_DIR=./prep-build` côté Vercel env. À designer Phase 3.
+- **Multi-chat UI** : sidebar avec liste des conversations, switch entre elles. (Aujourd'hui c'est multi-chat-DB-ready mais single-chat-UI.)
+- **Admin zone** (cf. backlog) : éditer les fragments de prompt, voir le prompt assemblé, suivre les tokens. Phase 3.
+- **Streaming SSE proprement** au lieu de text/plain : permettrait de pousser des événements typés (thinking/tool_use/error) au client. Optimisation v1.5.
+- **Custom domain `klowi.dooloob.com`** + **Password Protection** côté Vercel.
+
+***
+
 ## 2026-04-29 — Phase 1 : framing technique + scaffold (Adrien B.)
 
 **Goal**: arbitrer les Open Questions structurantes et poser le squelette Next.js avant Phase 2 (chat).

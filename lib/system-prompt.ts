@@ -10,12 +10,12 @@ import path from "node:path";
  * Both are concatenated in numeric-prefix order. The result is fed to Anthropic with prompt
  * caching breakpoints so re-injecting it on every turn stays cheap.
  *
- * Phase 1: skeleton only. Wired in Phase 2.
+ * The private prep directory path is resolved from MCF_PREP_DIR at runtime — keeping the path
+ * out of source code prevents Turbopack from trying to trace it at build time (the `mcf/`
+ * symlink crosses the Google Drive boundary, which Turbopack's static analyzer rejects).
  */
 
-const PROJECT_ROOT = process.cwd();
-const PUBLIC_PROMPT_DIR = path.join(PROJECT_ROOT, "context", "prompt");
-const PRIVATE_PREP_DIR = path.join(PROJECT_ROOT, "mcf", "AUDITIONS (!!)", "_prep");
+const PUBLIC_PROMPT_DIR = path.join(process.cwd(), "context", "prompt");
 
 async function readMarkdownDir(dir: string): Promise<string> {
   let entries: string[];
@@ -24,7 +24,11 @@ async function readMarkdownDir(dir: string): Promise<string> {
   } catch {
     return "";
   }
-  const mdFiles = entries.filter((f) => f.endsWith(".md")).sort();
+  const mdFiles = entries
+    .filter((f) => f.endsWith(".md"))
+    // README files are docs about the directory, not prompt content.
+    .filter((f) => !/^README/i.test(f))
+    .sort();
   const parts = await Promise.all(
     mdFiles.map(async (f) => {
       const content = await fs.readFile(path.join(dir, f), "utf-8");
@@ -35,9 +39,10 @@ async function readMarkdownDir(dir: string): Promise<string> {
 }
 
 export async function assembleSystemPrompt(): Promise<string> {
+  const privateDir = process.env.MCF_PREP_DIR ?? "";
   const [publicPart, privatePart] = await Promise.all([
     readMarkdownDir(PUBLIC_PROMPT_DIR),
-    readMarkdownDir(PRIVATE_PREP_DIR),
+    privateDir ? readMarkdownDir(privateDir) : Promise.resolve(""),
   ]);
   return [publicPart, privatePart].filter(Boolean).join("\n---\n\n");
 }

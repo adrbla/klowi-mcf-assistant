@@ -97,11 +97,30 @@ npm run lint     # eslint
 
 Both are moderate severity advisories on dev-time tooling, no shipped impact.
 
-## Not yet wired (Phase 2+)
+## Wired in Phase 2
 
-- `app/api/chat/route.ts` (streaming endpoint)
-- Drizzle schema → migration → Postgres connection
-- System prompt assembly call site (caching breakpoints)
+- `app/api/chat/route.ts` — streaming endpoint with prompt caching (system + multi-turn breakpoints), web_search tool, adaptive thinking + `effort: medium`, message persistence with token accounting, `preferredRegion: "fra1"`.
+- `app/api/chat/history/route.ts` — rehydration endpoint for the client.
+- Drizzle schema applied to Neon (`chats`, `messages` tables live).
+- System prompt assembly reads `context/prompt/*.md` (public) + `mcf/_prep/**.md` (private, env-resolved path).
+- `app/Chat.tsx` (client) + `app/page.tsx` (server) — chat UI with markdown, streaming display, `localStorage` chatId persistence.
+
+## Env vars (full list)
+
+| Var | Required | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | yes | Anthropic API auth (server-only) |
+| `POSTGRES_URL` | yes | Neon connection (Vercel-injected) |
+| `POSTGRES_URL_NON_POOLING` | yes | Direct connection for migrations |
+| `MCF_PREP_DIR` | optional | Absolute path to private prep corpus. Empty = public-only assembly. See `context/decisions.md` for the why. |
+| `DEFAULT_USER_ID` | optional (default `chloe`) | Single-tenant chat ownership |
+| `VERCEL_OIDC_TOKEN` | auto | Vercel-injected, used for some integrations |
+
+## Not yet wired
+
 - shadcn/ui (will be initialized when first primitive is needed)
 - Vercel Password Protection (set on the Vercel project, not in code)
-- Anthropic web_search tool wiring
+- Custom domain `klowi.dooloob.com` (DNS + Vercel domains)
+- Build-time copy of `_prep/` for Vercel deploy (`prebuild` script — Phase 3)
+- Multi-chat sidebar UI (DB is ready, UI is single-chat for now)
+- Admin zone for prompt editing (Phase 3)

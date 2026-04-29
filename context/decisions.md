@@ -1,5 +1,23 @@
 # Decisions – klowi-mcf-assistant
 
+## 2026-04-29 – Private prep corpus path injected via env var (`MCF_PREP_DIR`)
+
+**Context**: Phase 2 build broke when Turbopack walked `path.join(process.cwd(), "mcf", "AUDITIONS (!!)", "_prep")` as a literal directory reference and crossed the Google Drive symlink boundary, panicking on what it perceived as an out-of-root symlink.
+
+**Decision**: The private prep directory path is read from `process.env.MCF_PREP_DIR` at runtime — no literal path string of the private corpus appears in source. The committed `context/prompt/` directory keeps a normal `path.join(process.cwd(), …)`; only the symlinked external corpus is env-resolved.
+
+**Rejected alternatives**:
+- Patch `next.config.ts` with `outputFileTracingExcludes` — too fragile, doesn't reliably stop Turbopack's `DirAssetReference` static analysis.
+- Move `mcf/` symlink target onto the local filesystem (out of Drive) — defeats Drive sync, which is how the PO and contributors keep prep material in sync across machines.
+- Use dynamic-import or `eval()` tricks to hide the path string — fragile and obscure.
+
+**Consequences**:
+- Local dev sets `MCF_PREP_DIR` in `.env.local` to the Drive-symlinked absolute path.
+- Vercel deploy will need a `prebuild` script (Phase 3) that copies `_prep/**.md` into a build-side directory (e.g. `./prep-build/`) and sets `MCF_PREP_DIR=/var/task/prep-build` (or equivalent) in the Vercel project env.
+- Empty `MCF_PREP_DIR` is a valid state — assembly silently uses only the public corpus. Useful for previews/PR builds where private content shouldn't leak.
+
+***
+
 ## 2026-04-29 – Persistence: Vercel Postgres + Drizzle ORM
 
 **Context**: Need a chat/messages store accessible from Vercel-deployed route handlers. Single user, low write volume, schema trivial.
