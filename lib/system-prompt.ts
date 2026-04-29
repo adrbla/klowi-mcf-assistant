@@ -1,7 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { list } from "@vercel/blob";
+import { list, get } from "@vercel/blob";
 
 /**
  * Assembles the coach system prompt from two sources:
@@ -74,14 +74,15 @@ async function fetchPrepFromBlob(): Promise<string> {
     .filter((b) => !isReadme(path.basename(b.pathname)))
     .sort((a, b) => a.pathname.localeCompare(b.pathname));
 
-  // Private store: use downloadUrl (signed) rather than url (public).
+  // Private store: use the SDK's authenticated `get()` (the URLs returned
+  // by `list()` are not directly fetchable for private blobs — they 403).
   const parts = await Promise.all(
     blobs.map(async (b) => {
-      const r = await fetch(b.downloadUrl);
-      if (!r.ok) {
-        throw new Error(`Blob fetch failed for ${b.pathname}: ${r.status}`);
+      const result = await get(b.pathname, { access: "private" });
+      if (!result) {
+        throw new Error(`Blob get returned null for ${b.pathname}`);
       }
-      const text = await r.text();
+      const text = await new Response(result.stream).text();
       const relPath = b.pathname.startsWith(`${BLOB_PREFIX}/`)
         ? b.pathname.slice(BLOB_PREFIX.length + 1)
         : b.pathname;
