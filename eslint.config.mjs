@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // localStorage hydration on mount is a legitimate, one-shot pattern.
+      // The new React 19 rule is overly aggressive for client-only hydration code.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

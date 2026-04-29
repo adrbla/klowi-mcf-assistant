@@ -7,11 +7,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const chats = await listChatsForUser();
-  return Response.json({
-    chats: chats.map((c) => ({
+  return Response.json(
+    chats.map((c) => ({
       id: c.id,
       title: c.title,
       updatedAt: c.updatedAt,
     })),
-  });
+  );
 }

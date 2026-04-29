@@ -1,58 +1,65 @@
-type SearchParams = Promise<{ error?: string; next?: string }>;
+"use client";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const { error, next } = await searchParams;
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Brand } from "../components/Brand";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: code }),
+      });
+      if (!r.ok) {
+        setError("Ce n'est pas le bon code.");
+      } else {
+        router.replace("/");
+      }
+    } catch {
+      setError("Quelque chose n'a pas marché.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-24">
-      <form
-        action="/api/login"
-        method="POST"
-        className="w-full max-w-sm space-y-6"
-      >
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Klowi
-          </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Accès réservé.
-          </p>
-        </div>
-
-        {next && <input type="hidden" name="next" value={next} />}
-
-        <div className="space-y-2">
-          <label
-            htmlFor="passcode"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            Passcode
-          </label>
-          <input
-            id="passcode"
-            name="passcode"
-            type="password"
-            autoFocus
-            autoComplete="current-password"
-            required
-            className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-950 dark:text-zinc-50 focus:border-zinc-950 dark:focus:border-zinc-50 focus:outline-none transition"
-          />
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Passcode incorrect.
-            </p>
-          )}
-        </div>
-
+    <main className="min-h-dvh flex items-center justify-center bg-background text-foreground px-6">
+      <form onSubmit={submit} className="w-full max-w-[340px] flex flex-col gap-7">
+        <Brand size="lg" />
+        <input
+          type="password"
+          autoFocus
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder="passcode"
+          className="bg-transparent border-0 border-b border-border-strong text-foreground text-[18px] py-2 outline-none focus:border-foreground placeholder:text-faint"
+        />
         <button
           type="submit"
-          className="w-full rounded-lg bg-zinc-950 dark:bg-zinc-50 text-zinc-50 dark:text-zinc-950 px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+          disabled={!code.trim() || busy}
+          className="self-start font-mono text-[11px] tracking-[0.2em] uppercase px-5 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-30"
         >
-          Entrer
+          {busy ? "…" : "entrer"}
         </button>
+        {error && (
+          <p className="font-prose italic text-[14px] text-muted -mt-3">
+            {error}
+          </p>
+        )}
       </form>
     </main>
   );

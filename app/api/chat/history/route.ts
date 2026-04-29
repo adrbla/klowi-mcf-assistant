@@ -19,13 +19,12 @@ export async function GET(req: NextRequest) {
 
   const messages = await listMessages(chatId);
 
-  return Response.json({
-    chat: { id: chat.id, title: chat.title, updatedAt: chat.updatedAt },
-    messages: messages.map((m) => ({
+  return Response.json(
+    messages.map((m) => ({
       id: m.id,
       role: m.role,
       content: m.content,
       createdAt: m.createdAt,
     })),
-  });
+  );
 }

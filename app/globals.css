@@ -1,25 +1,246 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────
+   Klowi MCF — design tokens
+   5 themes × 2 modes (light/dark) = 10 sets
+   ────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Fallback = Sobre / light. Overridden by theme classes on <html>. */
+  --color-bg:        #ffffff;
+  --color-surface:   #fafafa;
+  --color-fg:        #0e0e0f;
+  --color-fg-muted:  #71717a;
+  --color-fg-faint:  #a1a1aa;
+  --color-accent:    #18181b;
+  --color-border:    #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-focus:     rgba(14,14,15,0.2);
+  --color-active-rule: #18181b;
+
+  /* Per-theme typography assignments. Overridden below where needed. */
+  --font-ui:      var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-prose:   var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono:    var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Markdown emphasis behavior — overridden by Shiny */
+  --em-bg:      transparent;
+  --em-color:   inherit;
+  --em-style:   italic;
+  --em-weight:  inherit;
+  --em-padding: 0;
+  --em-radius:  0;
+  --strong-color: inherit;
+  --strong-weight: 600;
 }
 
+/* ─── 01 Séminaire (académique) ─── */
+.theme-seminaire {
+  --color-bg:        #efece2;
+  --color-surface:   #f7f4ea;
+  --color-fg:        #1f2a24;
+  --color-fg-muted:  #6c6b5a;
+  --color-fg-faint:  #9c9685;
+  --color-accent:    #7a2e2a;
+  --color-border:    #d4cfbe;
+  --color-border-strong: #b9b39d;
+  --color-focus:     rgba(122,46,42,0.35);
+  --color-active-rule: #7a2e2a;
+
+  --font-prose:   var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-display: var(--font-newsreader), ui-serif, Georgia, serif;
+}
+.theme-seminaire.dark {
+  --color-bg:        #1c2520;
+  --color-surface:   #232d27;
+  --color-fg:        #e6e0cf;
+  --color-fg-muted:  #9c9685;
+  --color-fg-faint:  #5d655a;
+  --color-accent:    #c98a6a;
+  --color-border:    #2c3630;
+  --color-border-strong: #364039;
+  --color-focus:     rgba(201,138,106,0.4);
+  --color-active-rule: #c98a6a;
+}
+
+/* ─── 02 Sobre (neutre) ─── */
+.theme-sobre {
+  --color-bg:        #ffffff;
+  --color-surface:   #fafafa;
+  --color-fg:        #0e0e0f;
+  --color-fg-muted:  #71717a;
+  --color-fg-faint:  #a1a1aa;
+  --color-accent:    #18181b;
+  --color-border:    #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-focus:     rgba(14,14,15,0.2);
+  --color-active-rule: #18181b;
+}
+.theme-sobre.dark {
+  --color-bg:        #09090b;
+  --color-surface:   #0e0e0f;
+  --color-fg:        #fafafa;
+  --color-fg-muted:  #a1a1aa;
+  --color-fg-faint:  #52525b;
+  --color-accent:    #fafafa;
+  --color-border:    #18181b;
+  --color-border-strong: #27272a;
+  --color-focus:     rgba(250,250,250,0.2);
+  --color-active-rule: #fafafa;
+}
+
+/* ─── 03 Poudré (girly rose, sober) ─── */
+.theme-poudre {
+  --color-bg:        #f3e3df;
+  --color-surface:   #faecdf;
+  --color-fg:        #3b2a2e;
+  --color-fg-muted:  #8a6b6e;
+  --color-fg-faint:  #b6968f;
+  --color-accent:    #9b3344;
+  --color-border:    #e0c8c0;
+  --color-border-strong: #cdb0a8;
+  --color-focus:     rgba(155,51,68,0.3);
+  --color-active-rule: #9b3344;
+
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+}
+.theme-poudre.dark {
+  --color-bg:        #2a1f23;
+  --color-surface:   #332428;
+  --color-fg:        #f0d8d2;
+  --color-fg-muted:  #b6968f;
+  --color-fg-faint:  #6d5358;
+  --color-accent:    #e8a4a8;
+  --color-border:    #3d2c30;
+  --color-border-strong: #4a3338;
+  --color-focus:     rgba(232,164,168,0.3);
+  --color-active-rule: #e8a4a8;
+}
+
+/* ─── 04 Nuit bleue (carte blanche) ─── */
+.theme-nuit {
+  --color-bg:        #131a2a;
+  --color-surface:   #1a2236;
+  --color-fg:        #ece4cf;
+  --color-fg-muted:  #8a92a8;
+  --color-fg-faint:  #5a627a;
+  --color-accent:    #c7a86a;
+  --color-border:    #232c45;
+  --color-border-strong: #2c3654;
+  --color-focus:     rgba(199,168,106,0.35);
+  --color-active-rule: #c7a86a;
+
+  --font-prose:   var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+}
+.theme-nuit.dark {
+  --color-bg:        #0a0f1c;
+  --color-surface:   #111728;
+  --color-fg:        #ece4cf;
+  --color-fg-muted:  #6b748d;
+  --color-fg-faint:  #444c63;
+  --color-accent:    #d4b87a;
+  --color-border:    #182040;
+  --color-border-strong: #1f2942;
+  --color-focus:     rgba(212,184,122,0.35);
+  --color-active-rule: #d4b87a;
+}
+
+/* ─── 05 Shiny (coloré, joyeux) ─── */
+.theme-shiny {
+  --color-bg:        #f4eee2;
+  --color-surface:   #ffffff;
+  --color-fg:        #0e1f4a;
+  --color-fg-muted:  #5a6480;
+  --color-fg-faint:  #8a92b8;
+  --color-accent:    #0e3df0;
+  --color-border:    #e3dccb;
+  --color-border-strong: #0e1f4a;
+  --color-focus:     rgba(14,61,240,0.3);
+  --color-active-rule: #d83a52;
+
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
+  /* Markdown gets a personality bump in Shiny */
+  --em-bg:        #ffd84d;
+  --em-color:     #d83a52;
+  --em-style:     normal;
+  --em-weight:    600;
+  --em-padding:   0 3px;
+  --em-radius:    2px;
+  --strong-color: #0e3df0;
+  --strong-weight: 600;
+}
+.theme-shiny.dark {
+  --color-bg:        #0e1230;
+  --color-surface:   #181c3c;
+  --color-fg:        #f4eee2;
+  --color-fg-muted:  #8a92b8;
+  --color-fg-faint:  #4a5078;
+  --color-accent:    #ffd84d;
+  --color-border:    #232858;
+  --color-border-strong: #2a2f5c;
+  --color-focus:     rgba(255,216,77,0.4);
+  --color-active-rule: #ff8aa0;
+
+  --em-bg:        #ff8aa0;
+  --em-color:     #0e1230;
+  --em-style:     normal;
+  --em-weight:    600;
+  --em-padding:   0 3px;
+  --em-radius:    2px;
+  --strong-color: #6ad0ff;
+  --strong-weight: 600;
+}
+
+/* ──────────────────────────────────────────────
+   Tailwind v4 — surface CSS vars as utilities
+   ────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background:     var(--color-bg);
+  --color-foreground:     var(--color-fg);
+  --color-surface:        var(--color-surface);
+  --color-muted:          var(--color-fg-muted);
+  --color-faint:          var(--color-fg-faint);
+  --color-accent:         var(--color-accent);
+  --color-border:         var(--color-border);
+  --color-border-strong:  var(--color-border-strong);
+  --color-focus:          var(--color-focus);
+  --color-active-rule:    var(--color-active-rule);
+
+  --font-sans:    var(--font-ui);
+  --font-prose:   var(--font-prose);
+  --font-display: var(--font-display);
+  --font-mono:    var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ──────────────────────────────────────────────
+   Base
+   ────────────────────────────────────────────── */
+html, body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  font-feature-settings: "ss01", "cv01";
+  transition: background-color 200ms ease, color 200ms ease;
 }
+
+::selection { background: var(--color-accent); color: var(--color-bg); }
+
+/* Focus rings — discreet, never the OS blue */
+*:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Scrollbar — minimal, themed */
+* { scrollbar-width: thin; scrollbar-color: var(--color-border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
