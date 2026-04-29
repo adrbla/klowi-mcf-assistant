@@ -10,6 +10,7 @@ import {
   addUserMessage,
   addAssistantMessage,
   touchChat,
+  setTitleIfDefault,
 } from "@/lib/db/queries";
 
 export const runtime = "nodejs";
@@ -44,10 +45,16 @@ export async function POST(req: NextRequest) {
   const history = await listMessages(chatId);
   await addUserMessage(chatId, userMessage);
 
-  if (isNewChat) {
+  // Skip auto-title for kickoff markers — otherwise the chat gets named
+  // "[OPEN]" or "[FIRST]" and pollutes the sidebar. The first non-marker
+  // user message picks up the title via setTitleIfDefault (covers both
+  // fresh chats and post-welcome chats where turn 1 was [FIRST]).
+  const isMarker =
+    userMessage === "[OPEN]" || userMessage === "[FIRST]";
+  if (!isMarker) {
     const title =
       userMessage.length > 60 ? userMessage.slice(0, 57) + "…" : userMessage;
-    await touchChat(chatId, title);
+    await setTitleIfDefault(chatId, title);
   }
 
   const systemText = await assembleSystemPrompt();

@@ -6,14 +6,12 @@ import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
 import type { ChatSummary } from "./components/ChatListItem";
-import { BootstrapView } from "./BootstrapView";
 
 const CHAT_ID_KEY = "klowi.chatId";
-const BOOTSTRAP_DONE_KEY = "klowi.bootstrap.done";
+const WELCOME_KICKOFF = "[FIRST]";
 
 export default function Chat() {
   const [hydrated, setHydrated] = useState(false);
-  const [bootstrapDone, setBootstrapDone] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,6 +23,7 @@ export default function Chat() {
 
   const convoRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const welcomeFiredRef = useRef(false);
 
   const refreshChats = useCallback(async () => {
     try {
@@ -56,13 +55,6 @@ export default function Chat() {
 
   // ── hydrate from localStorage on mount (one-shot)
   useEffect(() => {
-    const done = localStorage.getItem(BOOTSTRAP_DONE_KEY) === "1";
-    setBootstrapDone(done);
-    if (!done) {
-      // Bootstrap not done — defer to BootstrapView, which manages its own state.
-      setHydrated(true);
-      return;
-    }
     const stored = localStorage.getItem(CHAT_ID_KEY);
     setChatId(stored);
     refreshChats();
@@ -70,13 +62,68 @@ export default function Chat() {
     setHydrated(true);
   }, [refreshChats, loadHistory]);
 
-  const handleBootstrapComplete = useCallback(() => {
-    setBootstrapDone(true);
-    setChatId(null);
-    setMessages([]);
-    refreshChats();
-    requestAnimationFrame(() => inputRef.current?.focus());
+  // ── post-bootstrap welcome kickoff: when arriving on /?welcome=1 with no
+  //    active chat, fire a [FIRST] marker so the companion opens with an
+  //    inviting question. Strip the param from the URL so a refresh doesn't
+  //    re-trigger.
+  const fireWelcomeKickoff = useCallback(async () => {
+    setIsStreaming(true);
+    setMessages([{ role: "assistant", content: "" }]);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: null, message: WELCOME_KICKOFF }),
+      });
+      const newId = res.headers.get("X-Chat-Id");
+      if (newId) {
+        setChatId(newId);
+        localStorage.setItem(CHAT_ID_KEY, newId);
+      }
+      if (!res.body) throw new Error("no stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages((m) => {
+          const next = [...m];
+          const last = next[next.length - 1];
+          if (last && last.role === "assistant") {
+            next[next.length - 1] = {
+              ...last,
+              content: last.content + chunk,
+            };
+          }
+          return next;
+        });
+      }
+    } catch {
+      setMessages([
+        {
+          role: "assistant",
+          content: "*Une erreur est survenue. Tu peux réessayer.*",
+        },
+      ]);
+    } finally {
+      setIsStreaming(false);
+      refreshChats();
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
   }, [refreshChats]);
+
+  useEffect(() => {
+    if (!hydrated || welcomeFiredRef.current) return;
+    if (chatId || messages.length > 0) return;
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("welcome") !== "1") return;
+    welcomeFiredRef.current = true;
+    url.searchParams.delete("welcome");
+    window.history.replaceState({}, "", url.pathname + url.search);
+    void fireWelcomeKickoff();
+  }, [hydrated, chatId, messages.length, fireWelcomeKickoff]);
 
   // ── auto-scroll on new messages / streaming chunks
   useEffect(() => {
@@ -205,10 +252,6 @@ export default function Chat() {
   if (!hydrated) {
     // suppress hydration mismatch w/ next-themes
     return <div className="min-h-dvh bg-background" />;
-  }
-
-  if (!bootstrapDone) {
-    return <BootstrapView onComplete={handleBootstrapComplete} />;
   }
 
   const activeTitle =

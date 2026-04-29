@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync-prep": "node --env-file=.env.local --experimental-strip-types scripts/sync-prep.ts"
+    "sync-prep": "node --env-file=.env.local --experimental-strip-types scripts/sync-prep.ts",
+    "clean-chats": "node --env-file=.env.local --experimental-strip-types scripts/clean-chats.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

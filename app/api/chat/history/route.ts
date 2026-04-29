@@ -19,12 +19,12 @@ export async function GET(req: NextRequest) {
 
   const messages = await listMessages(chatId);
 
-  // The [OPEN] marker is a session-kickoff trigger sent by the bootstrap UI.
-  // It's stored so Anthropic sees the user/assistant alternation, but never
-  // shown to the human reader.
+  // [OPEN] (bootstrap) and [FIRST] (post-bootstrap welcome) are session-kickoff
+  // markers sent by the client UIs. They're stored so Anthropic sees the
+  // user/assistant alternation, but never shown to the human reader.
   return Response.json(
     messages
-      .filter((m) => m.content !== "[OPEN]")
+      .filter((m) => m.content !== "[OPEN]" && m.content !== "[FIRST]")
       .map((m) => ({
         id: m.id,
         role: m.role,

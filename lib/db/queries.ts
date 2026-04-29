@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { db } from "./client";
 import { chats, messages, type Chat, type Message } from "./schema";
 
@@ -70,6 +70,24 @@ export async function touchChat(chatId: string, title?: string): Promise<void> {
   const update: { updatedAt: Date; title?: string } = { updatedAt: new Date() };
   if (title) update.title = title;
   await db.update(chats).set(update).where(eq(chats.id, chatId));
+}
+
+const DEFAULT_CHAT_TITLE = "Nouvelle conversation";
+
+/**
+ * Set the chat's title only if it's still the schema default. Used to
+ * pick up the first non-marker user message as the chat title — covers
+ * both fresh chats and post-welcome chats where the very first user
+ * message was a [FIRST] marker that we deliberately didn't title-from.
+ */
+export async function setTitleIfDefault(
+  chatId: string,
+  title: string,
+): Promise<void> {
+  await db
+    .update(chats)
+    .set({ title, updatedAt: new Date() })
+    .where(and(eq(chats.id, chatId), eq(chats.title, DEFAULT_CHAT_TITLE)));
 }
 
 export async function renameChat(

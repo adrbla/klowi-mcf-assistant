@@ -11,7 +11,7 @@ const START_COMMAND = "/start";
 const CHAT_ID_KEY = "klowi.chatId";
 const BOOTSTRAP_DONE_KEY = "klowi.bootstrap.done";
 
-export function BootstrapView({ onComplete }: { onComplete: () => void }) {
+export function BootstrapView() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -101,12 +101,13 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
   }, [messages, isStreaming]);
 
   const finishBootstrap = useCallback(async () => {
+    // The bootstrap conversation is ephemeral — discard it once the user
+    // has typed /start. The first real chat will be created on the next
+    // page (via the [FIRST] kickoff).
     if (chatId) {
       try {
         await fetch(`/api/chats/${encodeURIComponent(chatId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Bootstrap" }),
+          method: "DELETE",
         });
       } catch {
         /* swallow */
@@ -114,8 +115,8 @@ export function BootstrapView({ onComplete }: { onComplete: () => void }) {
     }
     localStorage.removeItem(CHAT_ID_KEY);
     localStorage.setItem(BOOTSTRAP_DONE_KEY, "1");
-    onComplete();
-  }, [chatId, onComplete]);
+    window.location.assign("/?welcome=1");
+  }, [chatId]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
