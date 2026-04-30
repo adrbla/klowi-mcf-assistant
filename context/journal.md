@@ -2,6 +2,65 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-04-30 — Phase 6 archi : `/conv/[id]` URL-driven + seeded welcome conv (Adrien B.)
+
+**Goal**: remplacer le bootstrap (Chloë l'a déjà fait, page de découverte vue) par une 2ᵉ entrée recadrée. Préparer un lien direct partageable type `/conv/[id]` et seeder une conversation d'accueil dont le 1ᵉʳ message s'anime à l'arrivée. Phase 1 = archi (livrée). Phase 2 = texte du message + rework prompt (à venir, session séparée).
+
+### Pourquoi cette phase
+
+L'expérience "Warm up" générée au [FIRST] était trop directe : la companion répondait frontalement au lieu d'explorer plusieurs angles avec Chloë. Le brief `context/references/brief_message_accueil_chloe_compagnon_de_preparation.md` recadre la posture vers un compagnon / espace de rebond, pas un outil de production. Le bootstrap n'a plus de raison d'exister — Chloë a déjà découvert l'app.
+
+### Cleanup bootstrap
+
+- Suppression de `/bootstrap`, `app/BootstrapView.tsx`, `app/components/KickoffProgress.tsx`, des markers `[OPEN]` / `[FIRST]` dans `/api/chat` et `/api/chat/history`, du `fireWelcomeKickoff` + flow `?welcome=1` dans `Chat.tsx`, du flag `klowi.bootstrap.done`.
+- `00-identity.md` réduit à l'identité durable (vocabulaire / réponse à "comment tu t'appelles" / pronom féminin). Tout le bootstrap intro flow / "pas ChatGPT calibrée" / `/start` retiré.
+- `10-posture.md` : retrait du seul bullet ancré `[FIRST]` ("Une seule fois au moment du `[FIRST]`..."). Le reste de la section "se méfie de l'IA" intact.
+- 2 commentaires stales nettoyés en suite (`ThinkingIndicator.tsx`, `lib/db/queries.ts`).
+
+### Routage `/conv/[id]` URL-driven
+
+- Server component `app/conv/[id]/page.tsx` : fetch chat + messages, `notFound()` si absent, passe `<Chat initialChatId initialMessages>`.
+- `Chat.tsx` accepte les props ; plus de `localStorage.chatId`. Sidebar select → `router.push("/conv/${id}")`. Click "nouvelle conv" → `router.push("/")`. 1ᵉʳ message d'une conv neuve → `router.replace("/conv/${newId}")` (pas de pollution history). Delete chat actif → `router.push("/")`.
+- Deux `useEffect` ajoutés : prop-sync (reset state quand `initialChatId`/`initialMessages` change — couvre le soft-nav Next.js qui réutilise le component) et `refreshChats()` au mount.
+- `app/page.tsx` reste : rend `<Chat />` sans props = état "nouvelle conversation" vide.
+
+### Seeded conv + script idempotent
+
+- `lib/seeded-convs.ts` : `WELCOME_CONV` constante (UUID `7b9e4f2c-3a8d-4c1e-9b5a-6d8e2f0c4a7b`, title "Getting the ball rolling", opening message **placeholder phase 1**).
+- `scripts/seed-welcome-conv.ts` : UPSERT chat row (idempotent), DELETE messages liés, INSERT message d'ouverture. `npm run seed-welcome`. Le même script sert au seed initial **et** au reset après tests PO.
+- `tsconfig.json` : ajout `"allowImportingTsExtensions": true` pour que TypeScript accepte les imports `.ts` cross-file utilisés par les scripts node `--experimental-strip-types`. Safe avec `"noEmit": true` déjà en place.
+
+### Animation typewriter
+
+- `app/components/TypewriterMessage.tsx` : reveal char-par-char (28 ms/char), curseur Unicode `▍` qui pulse, swap vers `<MessageBubble>` markdown une fois complet. `whitespace-pre-wrap` pendant l'animation pour préserver les `\n\n` qui deviennent des `<p>` après swap.
+- Gating dans `Chat.tsx` : `messages.length === 1 && messages[0].role === "assistant" && !isStreaming`. Pas de localStorage, pas d'ID hardcodé — comportement émergent du state DB. Re-streame à chaque reload tant que Chloë n'a pas répondu, statique ensuite.
+
+### Concerns notés en backlog (Now)
+
+- **Transaction manquante** dans le seed script. Risque marginal pour un script manuel single-user, à wrapper en `db.transaction()` Drizzle avant prod-grade.
+- **Race condition** sidebar-switch pendant streaming. Probabilité faible single-user. Fix futur : `AbortController` ou snapshot chatId.
+
+### Ce qui reste avant ship
+
+- **Smoke test browser** (Adrien) : navigation `/` ↔ `/conv/[id]` ↔ sidebar, animation du welcome conv, comportement post-reply.
+- **Push to GitHub** + Vercel auto-deploy.
+- **Seed prod** via `npm run seed-welcome` avec env prod, récupération de l'URL pour Chloë.
+
+### Phase 2 (à venir, session dédiée)
+
+- **Texte du message d'accueil** : remplacer le placeholder dans `lib/seeded-convs.ts` par un texte calibré sur le brief compagnon. Itérations PO + assistant sur ton, structure (entrée / repositionnement / paysage d'usages / amorçage / questions finales), longueur.
+- **Rework system prompt** : intégrer la posture compagnon dans `10-posture.md` au-delà du strict cleanup bootstrap (« espace de rebond », « ne fait pas le travail à sa place », paysage d'usages).
+- **Re-seed prod + envoi à Chloë**.
+
+### Open questions
+
+**For PO** :
+
+- **Browser smoke test** : avant push, tester `/conv/7b9e4f2c-3a8d-4c1e-9b5a-6d8e2f0c4a7b` en local. Animation OK ? Réponse → animation cesse correctement ? Sidebar clic vers une autre conv puis retour OK ? Reload sur conv inexistant = 404 ? Cliquer "Nouvelle conv" puis envoyer un msg → URL bascule en `/conv/${newId}` ?
+- **Phase 2 timing** : on attaque la rédaction du message + rework prompt tout de suite ou tu veux tester l'archi seule en prod d'abord ?
+
+***
+
 ## 2026-04-29 — Phase 3 + 4 + 5 closed : prêt à envoyer à Chloë (Adrien B.)
 
 **Goal**: clore l'arc « scaffold → app utilisable par Chloë sans assistance ». Cette session a tout couvert : provisioning final, intégration design, bootstrap UX, admin, corpus map, comportement de la companion.

@@ -2,7 +2,10 @@
 
 ## Now (immediate priority)
 
-- [ ] **Observer le 1er échange réel de Chloë** sur `/bootstrap`. Friction points, tone, perception « pas ChatGPT ». Resserrer si nécessaire.
+- [ ] **Phase 2 welcome message** : co-rédaction du texte d'accueil dans `lib/seeded-convs.ts` selon `brief_message_accueil_chloe_compagnon_de_preparation.md`. Rework `10-posture.md` pour intégrer la posture compagnon / espace de rebond / ne fait pas le travail à sa place. Re-seed prod via `npm run seed-welcome`. Envoi du lien à Chloë.
+- [ ] **Wrap seed script in transaction** : `scripts/seed-welcome-conv.ts` enchaîne UPSERT chat → DELETE messages → INSERT opening. Si l'INSERT échoue après le DELETE, conv reste vide (UX cassée). Wrap en `db.transaction(...)` Drizzle (raw `BEGIN/COMMIT` via `@vercel/postgres` ne tient pas le pool de connexions).
+- [ ] **Race condition switch-pendant-streaming** : si Chloë clique une autre conv pendant que le streaming d'un assistant message est en cours, le `useEffect` prop-sync de `Chat.tsx` peut écraser `messages` pendant que la boucle de stream y écrit encore. Probabilité faible (single-user, switch rare en cours de stream), mais réel. Fix : `AbortController` sur le `fetch`, ou snapshot du chatId au début du stream et garde sur les `setMessages` updates.
+- [ ] **Observer le 1er échange réel de Chloë** sur `/conv/[welcome-id]`. Friction points, tone, perception « pas ChatGPT ». Resserrer si nécessaire.
 - [ ] **Nommage de la companion + édition par Chloë** : (a) stocker un nom companion par utilisateur, persistant ; (b) afficher ce nom **discrètement en bas à gauche de la sidebar** (sous le theme picker ou intégré au footer), avec une affordance d'édition inline (clic → input → save) ; (c) injecter `Tu t'appelles {nom}.` dans le system prompt quand le nom est défini ; (d) mettre à jour `00-identity.md` en cohérence (la phrase "tu n'as pas encore de nom" devient conditionnelle). Schéma : ajouter une colonne `companion_name TEXT NULL` sur une nouvelle table `user_preferences (user_id PRIMARY KEY)`, ou un fichier KV-store si on veut éviter d'introduire une nouvelle table. La companion est déjà briefée pour répondre proprement quand Chloë demande son nom (`00-identity.md` § « Si Chloë te demande comment tu t'appelles »).
 - [ ] **Cross-session memory** : pipeline de summarization à la fin de chaque chat (titre + résumé court + tags), injection dans le system prompt des sessions suivantes (titres + résumés courts seulement, pas les détails). La companion sait qu'elle a *connaissance* d'autres sessions sans en avoir le détail. Schéma DB : `chat_summaries (chat_id, title, summary, tags, created_at)`. Documenter dans `10-posture.md`.
 - [ ] **Page logs + numéro de version discret** : `/admin/logs` récap commits récents + token usage / cache hit ratio + erreurs récentes. Numéro de version (depuis package.json ou VERSION file) injecté dans le system prompt pour que la companion puisse répondre à « il y a eu des modifs ? ».
@@ -67,6 +70,10 @@
 - [x] Format des réponses : court par défaut, propose de creuser, clarifications sur ambiguïté, chat ≠ doc generator — *Phase 5*
 - [x] Bootstrap UX serré : meta-clair, signal-aware (lecture des cues d'arrêt), soft cap 2-3 tours — *Phase 5*
 - [x] `npm run clean-chats` script + DB wipée pour le launch — *Phase 5*
+- [x] Retrait complet de la couche bootstrap (`/bootstrap`, `BootstrapView`, `KickoffProgress`, markers `[OPEN]`/`[FIRST]`, `?welcome=1` flow, "Warm up" naming) — *Phase 6*
+- [x] Routage URL-driven `/conv/[id]` (server component fetch + `<Chat>` props, sidebar `router.push`, `router.replace` sur 1er message, 404 sur conv inexistante) — *Phase 6*
+- [x] Mécanisme seeded conv : `lib/seeded-convs.ts` (UUID hardcodé, titre, opening message), `npm run seed-welcome` idempotent (sert au seed initial *et* au reset après tests) — *Phase 6*
+- [x] Animation typewriter char-par-char (`<TypewriterMessage>`, 28 ms/char), gating client-side `messages.length === 1 && role === assistant` — re-streame tant que Chloë n'a pas répondu, statique ensuite — *Phase 6*
 
 ***
-*Last updated: 2026-04-29 (Phase 5 closed — prêt à envoyer à Chloë)*
+*Last updated: 2026-04-30 (Phase 6 archi closed — phase 2 welcome message à venir)*
