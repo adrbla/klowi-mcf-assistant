@@ -35,6 +35,11 @@ L'expérience "Warm up" générée au [FIRST] était trop directe : la companion
 - `app/components/TypewriterMessage.tsx` : reveal char-par-char (28 ms/char), curseur Unicode `▍` qui pulse, swap vers `<MessageBubble>` markdown une fois complet. `whitespace-pre-wrap` pendant l'animation pour préserver les `\n\n` qui deviennent des `<p>` après swap.
 - Gating dans `Chat.tsx` : `messages.length === 1 && messages[0].role === "assistant" && !isStreaming`. Pas de localStorage, pas d'ID hardcodé — comportement émergent du state DB. Re-streame à chaque reload tant que Chloë n'a pas répondu, statique ensuite.
 
+### Phase 2 (livrée dans la même session)
+
+- **Texte du message d'accueil** co-rédigé : ancrage sur le discours liminaire de Strasbourg → normalise la distance → reframe l'espace (sparring partner + interlocuteur solide) → paysage micro/macro → 3 portes d'entrée concrètes pour Strasbourg avec interdiction explicite de produire à sa place → 2 questions ouvertes. Draft itéré dans `context/references/message_accueil_chloe_v1.md` (PO a édité directement la v1 avant intégration). Texte final dans `lib/seeded-convs.ts`.
+- **Rework `10-posture.md` § Principe fondamental** : hardening "Tu ne produis pas à sa place. Jamais." Pas d'échappatoire "si elle te demande explicitement". Ajout d'une procédure pour les requêtes "écris-moi X" (rediriger vers son propre travail via questions, angles, fausses pistes). Posture par défaut explicitée comme **socratique** (question qui ouvre > réponse qui ferme), sans philosopher, sans psychologiser. Exception préservée : feedback / relecture sur un texte qu'**elle** a soumis.
+
 ### Bug attrapé en smoke test live
 
 Le `useEffect` de prop-sync ajouté en Phase B a causé une **boucle infinie de renders**. Le défaut `initialMessages = []` crée une nouvelle référence à chaque render → dep array change → setMessages → re-render → loop, jusqu'à React's max update depth → page freezée (sidebar clicks unresponsive). Le code reviewer Phase B avait flaggué un "double render" mais avait sous-estimé la conséquence.
@@ -48,15 +53,9 @@ Fix en commit `c122b4e` : suppression complète de l'useEffect de prop-sync, rem
 
 ### Ce qui reste avant ship
 
-- **Smoke test browser** (Adrien) : navigation `/` ↔ `/conv/[id]` ↔ sidebar, animation du welcome conv, comportement post-reply.
+- **Smoke test browser final** (Adrien) : ouvrir `/conv/[welcome-id]`, vérifier le nouveau message à l'arrivée + animation. Tester un échange simple pour sentir la posture socratique (ex : demander "écris-moi le 1er paragraphe du liminaire" → la companion doit dévier vers des questions, pas produire).
 - **Push to GitHub** + Vercel auto-deploy.
 - **Seed prod** via `npm run seed-welcome` avec env prod, récupération de l'URL pour Chloë.
-
-### Phase 2 (à venir, session dédiée)
-
-- **Texte du message d'accueil** : remplacer le placeholder dans `lib/seeded-convs.ts` par un texte calibré sur le brief compagnon. Itérations PO + assistant sur ton, structure (entrée / repositionnement / paysage d'usages / amorçage / questions finales), longueur.
-- **Rework system prompt** : intégrer la posture compagnon dans `10-posture.md` au-delà du strict cleanup bootstrap (« espace de rebond », « ne fait pas le travail à sa place », paysage d'usages).
-- **Re-seed prod + envoi à Chloë**.
 
 ### Open questions
 
