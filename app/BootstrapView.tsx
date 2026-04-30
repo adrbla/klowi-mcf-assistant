@@ -33,7 +33,15 @@ export function BootstrapView() {
       setIsStreaming(true);
       setMessages((m) => [
         ...m,
-        ...(isKickoff ? [] : [{ role: "user" as const, content: text }]),
+        ...(isKickoff
+          ? []
+          : [
+              {
+                role: "user" as const,
+                content: text,
+                createdAt: new Date().toISOString(),
+              },
+            ]),
         { role: "assistant" as const, content: "" },
       ]);
       try {

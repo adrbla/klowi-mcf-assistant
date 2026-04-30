@@ -200,7 +200,7 @@ export default function Chat() {
       setInput("");
       setMessages((m) => [
         ...m,
-        { role: "user", content: text },
+        { role: "user", content: text, createdAt: new Date().toISOString() },
         { role: "assistant", content: "" },
       ]);
       setIsStreaming(true);

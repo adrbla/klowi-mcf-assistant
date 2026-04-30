@@ -7,20 +7,45 @@ import { StreamingDots } from "./StreamingDots";
 export type Message = {
   role: "user" | "assistant";
   content: string;
+  createdAt?: string;
 };
+
+function formatTimestamp(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const time = d.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  if (sameDay) return time;
+  const date = d.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+  });
+  return `${date} · ${time}`;
+}
 
 export function MessageBubble({
   message,
   isStreaming = false,
-  timestamp,
 }: {
   message: Message;
   isStreaming?: boolean;
-  timestamp?: string;
 }) {
   if (message.role === "user") {
+    const stamp = message.createdAt ? formatTimestamp(message.createdAt) : null;
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
+        {stamp && (
+          <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-faint">
+            {stamp}
+          </div>
+        )}
         <div className="max-w-[78%] rounded-[18px] rounded-br-[6px] bg-foreground text-background px-4 py-2.5 text-[14.5px] leading-[1.5] whitespace-pre-wrap break-words">
           {message.content}
         </div>
@@ -30,11 +55,6 @@ export function MessageBubble({
 
   return (
     <article className="max-w-full">
-      {timestamp && (
-        <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-faint mb-2">
-          {timestamp}
-        </div>
-      )}
       <div className="prose-klowi text-foreground text-[15px] leading-[1.6]">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
