@@ -23,5 +23,7 @@ export default async function ConvPage({
     createdAt: m.createdAt.toISOString(),
   }));
 
-  return <Chat initialChatId={id} initialMessages={initialMessages} />;
+  return (
+    <Chat key={id} initialChatId={id} initialMessages={initialMessages} />
+  );
 }

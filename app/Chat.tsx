@@ -40,12 +40,6 @@ export default function Chat({
     }
   }, []);
 
-  // ── sync internal state when props change (soft navigation reuses component)
-  useEffect(() => {
-    setChatId(initialChatId);
-    setMessages(initialMessages);
-  }, [initialChatId, initialMessages]);
-
   // ── refresh chat list on mount
   useEffect(() => {
     refreshChats();
