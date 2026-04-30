@@ -1,19 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Brand } from "./components/Brand";
 import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
 import type { ChatSummary } from "./components/ChatListItem";
 
-const CHAT_ID_KEY = "klowi.chatId";
-
-export default function Chat() {
-  const [hydrated, setHydrated] = useState(false);
-  const [chatId, setChatId] = useState<string | null>(null);
+export default function Chat({
+  initialChatId = null,
+  initialMessages = [],
+}: {
+  initialChatId?: string | null;
+  initialMessages?: Message[];
+}) {
+  const router = useRouter();
+  const [chatId, setChatId] = useState<string | null>(initialChatId);
   const [chats, setChats] = useState<ChatSummary[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -34,40 +39,16 @@ export default function Chat() {
     }
   }, []);
 
-  const loadHistory = useCallback(async (id: string) => {
-    try {
-      const r = await fetch(
-        `/api/chat/history?chatId=${encodeURIComponent(id)}`,
-        { cache: "no-store" },
-      );
-      if (r.status === 404) {
-        // Chat is gone (deleted server-side, or localStorage points at a
-        // chat that no longer exists). Reset state + storage so the rest
-        // of the app behaves as a fresh visit.
-        setMessages([]);
-        setChatId(null);
-        localStorage.removeItem(CHAT_ID_KEY);
-        return;
-      }
-      if (!r.ok) {
-        setMessages([]);
-        return;
-      }
-      const data: Message[] = await r.json();
-      setMessages(data);
-    } catch {
-      setMessages([]);
-    }
-  }, []);
-
-  // ── hydrate from localStorage on mount (one-shot)
+  // ── sync internal state when props change (soft navigation reuses component)
   useEffect(() => {
-    const stored = localStorage.getItem(CHAT_ID_KEY);
-    setChatId(stored);
+    setChatId(initialChatId);
+    setMessages(initialMessages);
+  }, [initialChatId, initialMessages]);
+
+  // ── refresh chat list on mount
+  useEffect(() => {
     refreshChats();
-    if (stored) loadHistory(stored);
-    setHydrated(true);
-  }, [refreshChats, loadHistory]);
+  }, [refreshChats]);
 
   // ── auto-scroll on new messages / streaming chunks
   useEffect(() => {
@@ -77,22 +58,16 @@ export default function Chat() {
   }, [messages, isStreaming]);
 
   const handleSelectChat = useCallback(
-    async (id: string) => {
-      setChatId(id);
-      localStorage.setItem(CHAT_ID_KEY, id);
-      await loadHistory(id);
-      inputRef.current?.focus();
+    (id: string) => {
+      router.push(`/conv/${id}`);
     },
-    [loadHistory],
+    [router],
   );
 
   const handleNewChat = useCallback(() => {
-    setChatId(null);
-    setMessages([]);
-    localStorage.removeItem(CHAT_ID_KEY);
     setMobileOpen(false);
-    inputRef.current?.focus();
-  }, []);
+    router.push("/");
+  }, [router]);
 
   const handleRenameChat = useCallback(
     async (id: string, title: string) => {
@@ -113,7 +88,9 @@ export default function Chat() {
   const handleDeleteChat = useCallback(
     async (id: string) => {
       setChats((cs) => cs.filter((c) => c.id !== id));
-      if (id === chatId) handleNewChat();
+      if (id === chatId) {
+        router.push("/");
+      }
       try {
         await fetch(`/api/chats/${encodeURIComponent(id)}`, {
           method: "DELETE",
@@ -122,7 +99,7 @@ export default function Chat() {
         /* swallow */
       }
     },
-    [chatId, handleNewChat],
+    [chatId, router],
   );
 
   // ── submit + stream
@@ -150,7 +127,8 @@ export default function Chat() {
         const newId = res.headers.get("X-Chat-Id");
         if (newId && newId !== chatId) {
           setChatId(newId);
-          localStorage.setItem(CHAT_ID_KEY, newId);
+          // Reflect the new chat id in the URL without adding a history entry.
+          router.replace(`/conv/${newId}`);
         }
 
         if (!res.body) throw new Error("no stream");
@@ -190,13 +168,8 @@ export default function Chat() {
         inputRef.current?.focus();
       }
     },
-    [input, isStreaming, chatId, refreshChats],
+    [input, isStreaming, chatId, refreshChats, router],
   );
-
-  if (!hydrated) {
-    // suppress hydration mismatch w/ next-themes
-    return <div className="min-h-dvh bg-background" />;
-  }
 
   const activeTitle =
     chats.find((c) => c.id === chatId)?.title ??
