@@ -74,12 +74,6 @@ export async function touchChat(chatId: string, title?: string): Promise<void> {
 
 const DEFAULT_CHAT_TITLE = "Nouvelle conversation";
 
-/**
- * Set the chat's title only if it's still the schema default. Used to
- * pick up the first non-marker user message as the chat title — covers
- * both fresh chats and post-welcome chats where the very first user
- * message was a [FIRST] marker that we deliberately didn't title-from.
- */
 export async function setTitleIfDefault(
   chatId: string,
   title: string,

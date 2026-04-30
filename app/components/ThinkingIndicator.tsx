@@ -5,9 +5,8 @@ import { StreamingDots } from "./StreamingDots";
 
 /**
  * Discreet "still working" indicator shown in place of an empty assistant
- * bubble while waiting for the first streaming chunk. Picks one short line
- * at random — no progressive sequence (that's KickoffProgress's job for
- * the very first turn). Stays on a single phrase for the whole wait.
+ * bubble while waiting for the first streaming chunk. Picks one short
+ * phrase at random and holds it for the full wait.
  */
 
 const PHRASES: readonly string[] = [
