@@ -45,24 +45,10 @@ export async function POST(req: NextRequest) {
   const history = await listMessages(chatId);
   await addUserMessage(chatId, userMessage);
 
-  // Skip auto-title for kickoff markers — otherwise the chat gets named
-  // "[OPEN]" or "[FIRST]" and pollutes the sidebar.
-  const isMarker =
-    userMessage === "[OPEN]" || userMessage === "[FIRST]";
-
-  // The [FIRST] welcome chat gets pre-named "Warm up" — recognizable in the
-  // sidebar from the start, even before Chloë sends her own first message.
-  if (isNewChat && userMessage === "[FIRST]") {
-    await touchChat(chatId, "Warm up");
-  }
-
-  // For everything else: the first non-marker user message of a chat sets
-  // the title (covers fresh chats Chloë opens manually).
-  if (!isMarker) {
-    const title =
-      userMessage.length > 60 ? userMessage.slice(0, 57) + "…" : userMessage;
-    await setTitleIfDefault(chatId, title);
-  }
+  // The first user message of a chat sets the title (truncated for sidebar).
+  const title =
+    userMessage.length > 60 ? userMessage.slice(0, 57) + "…" : userMessage;
+  await setTitleIfDefault(chatId, title);
 
   const systemText = await assembleSystemPrompt();
 
