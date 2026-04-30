@@ -21,8 +21,9 @@ export function TypewriterMessage({ content }: { content: string }) {
   }, [revealedChars, content.length]);
 
   // While typing, render plain text char-by-char (no markdown parsing on
-  // partial input). Once complete, swap to the full MessageBubble for the
-  // final markdown render — same DOM as a normal historic message.
+  // partial input). `whitespace-pre-wrap` preserves the `\n\n` paragraph
+  // breaks that ReactMarkdown will format into <p> blocks once the swap
+  // happens. Once complete, hand off to MessageBubble for markdown render.
   if (!done) {
     return (
       <article className="max-w-full">
