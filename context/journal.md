@@ -30,15 +30,20 @@ L'expérience "Warm up" générée au [FIRST] était trop directe : la companion
 - `scripts/seed-welcome-conv.ts` : UPSERT chat row (idempotent), DELETE messages liés, INSERT message d'ouverture. `npm run seed-welcome`. Le même script sert au seed initial **et** au reset après tests PO.
 - `tsconfig.json` : ajout `"allowImportingTsExtensions": true` pour que TypeScript accepte les imports `.ts` cross-file utilisés par les scripts node `--experimental-strip-types`. Safe avec `"noEmit": true` déjà en place.
 
-### Animation typewriter
+### Animation typewriter — *finalement retirée*
 
-- `app/components/TypewriterMessage.tsx` : reveal char-par-char (28 ms/char), curseur Unicode `▍` qui pulse, swap vers `<MessageBubble>` markdown une fois complet. `whitespace-pre-wrap` pendant l'animation pour préserver les `\n\n` qui deviennent des `<p>` après swap.
-- Gating dans `Chat.tsx` : `messages.length === 1 && messages[0].role === "assistant" && !isStreaming`. Pas de localStorage, pas d'ID hardcodé — comportement émergent du state DB. Re-streame à chaque reload tant que Chloë n'a pas répondu, statique ensuite.
+Posée puis virée dans la même session. Le composant `<TypewriterMessage>` (reveal char-par-char 28 ms/char + curseur Unicode `▍` puis swap vers `<MessageBubble>`) marchait techniquement, mais à l'usage : trop lent, plus distrayant qu'accueillant. PO call après live test → suppression. Le message d'ouverture de la welcome conv s'affiche désormais en statique, comme un message historique normal. Le mécanisme de seed reste (la conv a bien un message assistant en première position).
 
 ### Phase 2 (livrée dans la même session)
 
 - **Texte du message d'accueil** co-rédigé : ancrage sur le discours liminaire de Strasbourg → normalise la distance → reframe l'espace (sparring partner + interlocuteur solide) → paysage micro/macro → 3 portes d'entrée concrètes pour Strasbourg avec interdiction explicite de produire à sa place → 2 questions ouvertes. Draft itéré dans `context/references/message_accueil_chloe_v1.md` (PO a édité directement la v1 avant intégration). Texte final dans `lib/seeded-convs.ts`.
 - **Rework `10-posture.md` § Principe fondamental** : hardening "Tu ne produis pas à sa place. Jamais." Pas d'échappatoire "si elle te demande explicitement". Ajout d'une procédure pour les requêtes "écris-moi X" (rediriger vers son propre travail via questions, angles, fausses pistes). Posture par défaut explicitée comme **socratique** (question qui ouvre > réponse qui ferme), sans philosopher, sans psychologiser. Exception préservée : feedback / relecture sur un texte qu'**elle** a soumis.
+
+### Hallucination attrapée en smoke test prod, fix en route handler
+
+À l'envoi du 1ᵉʳ message dans la welcome conv, la companion répondait avec une dérive du genre « je te l'ai écrit juste au-dessus — tu peux le relire là » alors qu'elle n'avait rien produit. Cause : la conv commence par un message **assistant** ; sans message user préalable, le modèle suppose qu'il y a eu un échange antérieur dont il aurait perdu l'accès, et hallucine pour combler.
+
+Fix dans `app/api/chat/route.ts` : avant l'appel Anthropic, si `history[0].role === "assistant"`, on **prepend un message user synthétique** au payload (`[Méta : début de conversation. Chloë vient d'ouvrir un lien dédié vers cette session, elle n'a encore rien écrit. Le message qui suit est ton accueil — pas une continuation.]`). Hors DB, hors UI — uniquement côté payload API. Ancre l'accueil comme une vraie ouverture, plus comme une continuation imaginaire. La règle d'alternation Anthropic est satisfaite, l'hallucination disparaît.
 
 ### Bug attrapé en smoke test live
 
@@ -51,18 +56,20 @@ Fix en commit `c122b4e` : suppression complète de l'useEffect de prop-sync, rem
 - **Transaction manquante** dans le seed script. Risque marginal pour un script manuel single-user, à wrapper en `db.transaction()` Drizzle avant prod-grade.
 - **Race condition** sidebar-switch pendant streaming. Probabilité faible single-user. Fix futur : `AbortController` ou snapshot chatId.
 
-### Ce qui reste avant ship
+### État final au close-the-loop
 
-- **Smoke test browser final** (Adrien) : ouvrir `/conv/[welcome-id]`, vérifier le nouveau message à l'arrivée + animation. Tester un échange simple pour sentir la posture socratique (ex : demander "écris-moi le 1er paragraphe du liminaire" → la companion doit dévier vers des questions, pas produire).
-- **Push to GitHub** + Vercel auto-deploy.
-- **Seed prod** via `npm run seed-welcome` avec env prod, récupération de l'URL pour Chloë.
+- **18 commits poussés sur main**, Vercel auto-deploy live.
+- Smoke test browser local OK (sidebar nav, send message, posture socratique vérifiée par déviation correcte sur "écris-moi le 1er paragraphe").
+- DB partagée local↔prod : welcome conv déjà seedée dans la même base, donc URL prod `https://klowi.dooloob.com/conv/7b9e4f2c-3a8d-4c1e-9b5a-6d8e2f0c4a7b` directement utilisable sans re-seed.
+- Chat orphelin "Nouvelle conversation" supprimé manuellement de la DB partagée pour propreté.
 
 ### Open questions
 
 **For PO** :
 
-- **Browser smoke test** : avant push, tester `/conv/7b9e4f2c-3a8d-4c1e-9b5a-6d8e2f0c4a7b` en local. Animation OK ? Réponse → animation cesse correctement ? Sidebar clic vers une autre conv puis retour OK ? Reload sur conv inexistant = 404 ? Cliquer "Nouvelle conv" puis envoyer un msg → URL bascule en `/conv/${newId}` ?
-- **Phase 2 timing** : on attaque la rédaction du message + rework prompt tout de suite ou tu veux tester l'archi seule en prod d'abord ?
+- **Retour de Chloë sur le nouveau cadre** : posture socratique trop frustrante sur des demandes pratiques ? Message d'ouverture trop long / trop court / mal calibré ? La 2ᵉ question finale (« qu'est-ce qui te résiste le plus ») servait-elle ? Le ré-itérer sur v2 sans push (juste re-seed) si besoin.
+- **Cleanup ancien "Warm up"** dans la DB partagée : on garde sa 1ʳᵉ conv historique ou on wipe pour partir net ? Pas urgent, mais à décider.
+- **Deprecation `middleware.ts` → `proxy.ts`** Next 16 : warning au build, à migrer un jour mais non bloquant.
 
 ***
 

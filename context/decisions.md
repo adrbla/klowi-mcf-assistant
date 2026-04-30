@@ -1,5 +1,45 @@
 # Decisions – klowi-mcf-assistant
 
+## 2026-04-30 – `/conv/[id]` URL-driven + seeded welcome conv (supersedes `/bootstrap` ephemeral)
+
+**Context**: Chloë's first warm-up via the bootstrap flow felt too direct — the companion answered frontally instead of exploring with her. PO wanted a 2nd, more exploratory entry point with a calibrated opening message ("compagnon de préparation", brief at `context/references/brief_message_accueil_chloe_compagnon_de_preparation.md`). The bootstrap layer no longer earned its complexity (Chloë had already done it once, the discovery moment was past).
+
+**Decision**:
+- Retire the bootstrap layer entirely (route `/bootstrap`, `BootstrapView`, markers `[OPEN]`/`[FIRST]`, kickoff sequence). System prompt stripped of bootstrap-phase content.
+- Conversation routing becomes URL-driven : `/conv/[id]` is the global pattern. Server component fetches chat + history, passes them as props to `<Chat>`. Sidebar selects via `router.push`, new chat via `/`, first message of new chat via `router.replace("/conv/[newId]")`. `localStorage.chatId` retired. State resets across routes via `key` prop on `<Chat>` (forces remount).
+- Seeded conversations live in `lib/seeded-convs.ts` (UUID hardcoded, title, opening message). Idempotent `npm run seed-welcome` upserts the chat row and resets messages — same script for initial seed and post-test wipe.
+- Companion posture hardened in `10-posture.md` § Principe fondamental : « ne produit jamais à sa place », socratique par défaut, redirige les "écris-moi X" vers son propre travail.
+- Welcome message rendered statically (no animation — typewriter tried and rejected as too slow / distracting).
+
+**Rejected alternatives**:
+- Keep bootstrap and just rewrite its message — would have kept dead code and the [FIRST] marker hacks. Cleaner to drop the whole layer.
+- Slug-based URLs (`/conv/welcome`) — broke the simple "id = UUID" mental model. UUID-based with a hardcoded constant for the welcome conv preserves uniformity.
+- Render welcome message UI-only (not in DB) — would have required special-case logic for "first turn comes from where?". Storing the message as a real first assistant row is simpler and gives the model the context.
+- Char-by-char typewriter animation — implemented, tested live, rejected (too slow at any speed, more distracting than welcoming).
+- Prop-sync `useEffect` to reset state on route change — caused infinite render loop (default `[]` arg = new ref each render). Replaced with `key` prop on `<Chat>` at page level.
+
+**Consequences**:
+- `/conv/[id]` becomes the canonical conversation URL (shareable). The seeded mechanism is reusable later for other targeted entry points (e.g., a Strasbourg-specific or Grenoble-specific link).
+- Adrien can iterate on the welcome message without redeploying — edit `lib/seeded-convs.ts`, `npm run seed-welcome`, the DB row updates and prod sees the new text on next load.
+- A seeded conv whose first message is from the assistant violates Anthropic's "user-first" expectation when the user replies. Solved at the API adapter layer (see next decision below) — the DB stays clean.
+
+***
+
+## 2026-04-30 – Synthetic user opener injected at API time for seeded convs
+
+**Context**: When the welcome conv has only one assistant message and Chloë replies, the payload to Anthropic becomes `[assistant, user]`. The model interprets the leading assistant message as a continuation of an exchange it lost access to, and hallucinates references to it ("je te l'ai écrit juste au-dessus"). Observed in live smoke test.
+
+**Decision**: In `app/api/chat/route.ts`, before assembling `anthropicMessages`, detect when `history[0].role === "assistant"` and prepend a synthetic user message with content `[Méta : début de conversation. Chloë vient d'ouvrir un lien dédié vers cette session, elle n'a encore rien écrit. Le message qui suit est ton accueil — pas une continuation.]`. Stays out of the DB and out of the UI — it's purely an API-payload concern.
+
+**Rejected alternatives**:
+- Store a `[GREET]`-style marker user message in DB and filter it from UI — exactly the marker pattern we just removed with the bootstrap. Reintroducing it would couple a presentation concern to the data layer.
+- Inject the welcome text into the system prompt instead of as a real assistant message — system prompt is shared across conversations; making it conv-specific would break caching and add complexity.
+- Drop the leading assistant message before sending to Anthropic — the model would lose its own "memory" of what it just said.
+
+**Consequences**: The seeded conv pattern (assistant-first DB row) is durable. The `[Méta: ...]` convention is a clean signal the model recognizes as scene-setting. If we add other seeded convs later, the same prepend logic applies automatically.
+
+***
+
 ## 2026-04-29 – Companion framing: pas un coach, pas ChatGPT, pas une IA générique
 
 **Context**: PO brief pivots away from « coach » framing — the user is wary of AI, doesn't want a tutor, doesn't want assistant clichés. The companion needs to land as something specifically calibrated for Chloë rather than as another chatbot.
