@@ -52,11 +52,27 @@ export async function POST(req: NextRequest) {
 
   const systemText = await assembleSystemPrompt();
 
+  const historyForApi: Anthropic.MessageParam[] = history.map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
+
+  // Seeded conversations open with an assistant message (the welcome
+  // opening). Without a prior user message, the model assumes there was
+  // an earlier exchange it doesn't have access to, and may hallucinate
+  // referencing it ("I wrote it above…"). Prepend a synthetic user
+  // opener so the assistant's first turn is anchored as a true greeting,
+  // not a continuation. Stays out of the DB and out of the UI.
+  if (historyForApi.length > 0 && historyForApi[0].role === "assistant") {
+    historyForApi.unshift({
+      role: "user",
+      content:
+        "[Méta : début de conversation. Chloë vient d'ouvrir un lien dédié vers cette session, elle n'a encore rien écrit. Le message qui suit est ton accueil — pas une continuation.]",
+    });
+  }
+
   const anthropicMessages: Anthropic.MessageParam[] = [
-    ...history.map((m): Anthropic.MessageParam => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
+    ...historyForApi,
     { role: "user", content: userMessage },
   ];
 
