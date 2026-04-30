@@ -35,6 +35,12 @@ L'expérience "Warm up" générée au [FIRST] était trop directe : la companion
 - `app/components/TypewriterMessage.tsx` : reveal char-par-char (28 ms/char), curseur Unicode `▍` qui pulse, swap vers `<MessageBubble>` markdown une fois complet. `whitespace-pre-wrap` pendant l'animation pour préserver les `\n\n` qui deviennent des `<p>` après swap.
 - Gating dans `Chat.tsx` : `messages.length === 1 && messages[0].role === "assistant" && !isStreaming`. Pas de localStorage, pas d'ID hardcodé — comportement émergent du state DB. Re-streame à chaque reload tant que Chloë n'a pas répondu, statique ensuite.
 
+### Bug attrapé en smoke test live
+
+Le `useEffect` de prop-sync ajouté en Phase B a causé une **boucle infinie de renders**. Le défaut `initialMessages = []` crée une nouvelle référence à chaque render → dep array change → setMessages → re-render → loop, jusqu'à React's max update depth → page freezée (sidebar clicks unresponsive). Le code reviewer Phase B avait flaggué un "double render" mais avait sous-estimé la conséquence.
+
+Fix en commit `c122b4e` : suppression complète de l'useEffect de prop-sync, remplacé par une `key` sur `<Chat>` au niveau page (`key="new"` dans `app/page.tsx`, `key={id}` dans `app/conv/[id]/page.tsx`). Naviguer entre routes (ou entre deux convs différentes) force un remount complet de `<Chat>` — state reset propre via les `useState` initializers, pas de loop possible.
+
 ### Concerns notés en backlog (Now)
 
 - **Transaction manquante** dans le seed script. Risque marginal pour un script manuel single-user, à wrapper en `db.transaction()` Drizzle avant prod-grade.
