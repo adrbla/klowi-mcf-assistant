@@ -6,6 +6,7 @@ import { Brand } from "./components/Brand";
 import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
+import { TypewriterMessage } from "./components/TypewriterMessage";
 import type { ChatSummary } from "./components/ChatListItem";
 
 export default function Chat({
@@ -171,6 +172,11 @@ export default function Chat({
     [input, isStreaming, chatId, refreshChats, router],
   );
 
+  const shouldAnimateFirst =
+    messages.length === 1 &&
+    messages[0].role === "assistant" &&
+    !isStreaming;
+
   const activeTitle =
     chats.find((c) => c.id === chatId)?.title ??
     (messages.length ? "Conversation en cours" : null);
@@ -257,6 +263,9 @@ export default function Chat({
                   m.content === "";
                 if (isWaitingChunk) {
                   return <ThinkingIndicator key={i} />;
+                }
+                if (i === 0 && shouldAnimateFirst) {
+                  return <TypewriterMessage key={i} content={m.content} />;
                 }
                 return (
                   <MessageBubble
