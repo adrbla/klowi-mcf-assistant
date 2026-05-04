@@ -2,6 +2,40 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-05-04 — Phase 7 : upload de documents (.md, .txt, .pdf) (Adrien B.)
+
+**Goal**: permettre à Chloë de joindre des fichiers à ses messages plutôt que de copier-coller de gros blocs de texte. PDFs lus avec leur structure de pages (support natif Anthropic).
+
+### Livraison
+
+- **DB** : nouvelle colonne `attachments JSONB` sur `messages`, type `MessageAttachment` exporté depuis `lib/db/schema.ts`. `addUserMessage` accepte un argument optionnel.
+- **Lib** : `lib/attachments.ts` centralise validation (extension/MIME/taille), fetch Blob via `get(path, { access: "private" })` (pattern aligné sur `system-prompt.ts`), et la construction des content blocks Anthropic (`document` pour PDF, texte framé pour MD/TXT). Logge et skip si Blob renvoie une erreur.
+- **Endpoint** : `POST /api/upload` (multipart, valide extension + MIME + taille [10 MB cap], rejette les fichiers vides, génère un UUID, upload Blob `attachments/<uuid>.<ext>`, retourne metadata).
+- **Chat route** : accepte `attachments[]` dans le body, persiste sur le user message, reconstruit les content blocks pour TOUS les messages historiques avec attachements à chaque tour (la companion voit les documents partagés sur tous les tours suivants). Cache breakpoint placé sur le dernier bloc du dernier user message qui porte des attachements (économise les tokens sur les tours ultérieurs). Top-level `cache_control` redondant sur `messages.stream()` retiré (la cache_control va sur les content blocks individuels).
+- **UI** : paperclip dans la barre d'input (gauche du champ texte), file picker filtré sur `.pdf,.md,.txt`, validation client (extension + 10 MB), chip pendant + dans la bulle user. `<AttachmentChip>` réutilisable (avec/sans bouton ✕). State machine upload (idle/uploading/error) avec error message inline. **AbortController** sur la requête upload : si Chloë retire le chip pendant que ça monte, la requête est abort et aucun blob orphelin n'est résurrigé en state.
+- **System prompt** : ajout d'une bullet « Upload de documents » dans `10-posture.md` § Outils. Awareness sans inflation didactique. Le principe « tu ne produis pas à sa place » est rappelé pour les documents joints (commenter, questionner, pointer — pas réécrire).
+
+### Smoke test
+
+- Upload `.md` testé en local : chip apparaît, contenu lu par la companion, posture socratique tient.
+- **À surveiller** : Adrien a noté qu'il a dû *rafraîchir la page* pour voir la réponse au 1ᵉʳ tour. Cause probable : 1ʳᵉ réponse avec doc = cache cold + processing du document = stream lent à arriver. À observer en prod sur les premiers usages réels ; si récurrent, investiguer (timeout côté client ? streaming chunks qui n'arrivent pas ?).
+- Test chat technique (`dfc37e8c…`) supprimé manuellement. Welcome conv re-seedée.
+
+### Concerns notés
+
+- **Re-fetch Blob à chaque tour** : pas de cache mémoire en v1. Si la latence d'un tour devient gênante (>2s additionnels), ajouter un cache 5min comme `lib/system-prompt.ts` ou stocker les bytes dans `messages.blocks`.
+- **Orphan blobs** : pas de sweep automatique, accepté pour single-user. Path namespace `attachments/<id>.<ext>` permet un audit manuel.
+- **Constants client/server dupliquées** : `MAX_ATTACHMENT_BYTES` / `ACCEPTED_EXTENSIONS` définis à la fois dans `lib/attachments.ts` (server-only) et au top de `Chat.tsx`. Commenté pour rappel mutuel ; à extraire dans un module partagé non-server-only le jour où ça diverge.
+
+### Open questions
+
+**For PO** :
+
+- **Délai de la 1ʳᵉ réponse avec PDF** : à monitorer sur les premiers tours réels de Chloë. Si elle voit du *blanc* trop longtemps (>5s), on calibrera (cache mémoire des bytes, ou timeout côté client avec retry, ou indicateur "lecture du document…").
+- **Multi-attachement** : v1 = 1 attachement par message. Le schema (JSONB array) le supporte déjà, l'UI ne le fait pas. À évoluer si Chloë attache fréquemment plusieurs fichiers d'un coup.
+
+***
+
 ## 2026-04-30 — Phase 6 archi : `/conv/[id]` URL-driven + seeded welcome conv (Adrien B.)
 
 **Goal**: remplacer le bootstrap (Chloë l'a déjà fait, page de découverte vue) par une 2ᵉ entrée recadrée. Préparer un lien direct partageable type `/conv/[id]` et seeder une conversation d'accueil dont le 1ᵉʳ message s'anime à l'arrivée. Phase 1 = archi (livrée). Phase 2 = texte du message + rework prompt (à venir, session séparée).

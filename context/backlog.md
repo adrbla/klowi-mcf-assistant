@@ -74,6 +74,7 @@
 - [x] Routage URL-driven `/conv/[id]` (server component fetch + `<Chat>` props, sidebar `router.push`, `router.replace` sur 1er message, 404 sur conv inexistante) — *Phase 6*
 - [x] Mécanisme seeded conv : `lib/seeded-convs.ts` (UUID hardcodé, titre, opening message), `npm run seed-welcome` idempotent (sert au seed initial *et* au reset après tests) — *Phase 6*
 - [x] Animation typewriter char-par-char (`<TypewriterMessage>`, 28 ms/char), gating client-side `messages.length === 1 && role === assistant` — re-streame tant que Chloë n'a pas répondu, statique ensuite — *Phase 6*
+- [x] Upload de documents (`.md`, `.txt`, `.pdf`) : paperclip + chip, `/api/upload` Blob, colonne `attachments JSONB` sur `messages`, expansion en content blocks Anthropic (PDF natif page-aware, MD/TXT inline), cache breakpoint sur le dernier message-avec-doc, awareness dans `10-posture.md` — *Phase 7*
 
 ***
-*Last updated: 2026-04-30 (Phase 6 archi closed — phase 2 welcome message à venir)*
+*Last updated: 2026-05-04 (Phase 7 — upload de documents)*
