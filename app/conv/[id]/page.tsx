@@ -21,6 +21,7 @@ export default async function ConvPage({
     role: m.role as "user" | "assistant",
     content: m.content,
     createdAt: m.createdAt.toISOString(),
+    attachments: (m.attachments ?? undefined) as Message["attachments"],
   }));
 
   return (

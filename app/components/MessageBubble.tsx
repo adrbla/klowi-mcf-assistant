@@ -3,11 +3,14 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { StreamingDots } from "./StreamingDots";
+import { AttachmentChip } from "./AttachmentChip";
+import type { MessageAttachment } from "@/lib/db/schema";
 
 export type Message = {
   role: "user" | "assistant";
   content: string;
   createdAt?: string;
+  attachments?: MessageAttachment[];
 };
 
 function formatTimestamp(iso: string): string | null {
@@ -39,16 +42,26 @@ export function MessageBubble({
 }) {
   if (message.role === "user") {
     const stamp = message.createdAt ? formatTimestamp(message.createdAt) : null;
+    const atts = message.attachments ?? [];
     return (
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-col items-end gap-1.5">
         {stamp && (
           <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-faint">
             {stamp}
           </div>
         )}
-        <div className="max-w-[78%] rounded-[18px] rounded-br-[6px] bg-foreground text-background px-4 py-2.5 text-[14.5px] leading-[1.5] whitespace-pre-wrap break-words">
-          {message.content}
-        </div>
+        {atts.length > 0 && (
+          <div className="flex flex-col items-end gap-1 max-w-[78%]">
+            {atts.map((att) => (
+              <AttachmentChip key={att.id} name={att.name} />
+            ))}
+          </div>
+        )}
+        {message.content && (
+          <div className="max-w-[78%] rounded-[18px] rounded-br-[6px] bg-foreground text-background px-4 py-2.5 text-[14.5px] leading-[1.5] whitespace-pre-wrap break-words">
+            {message.content}
+          </div>
+        )}
       </div>
     );
   }

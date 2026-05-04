@@ -6,7 +6,12 @@ import { Brand } from "./components/Brand";
 import { Sidebar } from "./components/Sidebar";
 import { MessageBubble, type Message } from "./components/MessageBubble";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
+import { AttachmentChip } from "./components/AttachmentChip";
 import type { ChatSummary } from "./components/ChatListItem";
+import type { MessageAttachment } from "@/lib/db/schema";
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_EXTENSIONS = [".pdf", ".md", ".txt"] as const;
 
 export default function Chat({
   initialChatId = null,
@@ -21,6 +26,14 @@ export default function Chat({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+
+  const [pendingAttachment, setPendingAttachment] =
+    useState<MessageAttachment | null>(null);
+  const [uploadState, setUploadState] = useState<
+    "idle" | "uploading" | "error"
+  >("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -96,6 +109,70 @@ export default function Chat({
     [chatId, router],
   );
 
+  const handlePickFile = useCallback(() => {
+    if (uploadState === "uploading" || isStreaming) return;
+    fileInputRef.current?.click();
+  }, [uploadState, isStreaming]);
+
+  const handleFileSelected = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Reset the input so selecting the same file twice still fires onChange.
+      e.target.value = "";
+      if (!file) return;
+
+      // Client-side validation (filet, server re-validates).
+      const lower = file.name.toLowerCase();
+      const acceptedExt = ACCEPTED_EXTENSIONS.some((x) => lower.endsWith(x));
+      if (!acceptedExt) {
+        setUploadError(
+          "Je lis les .md, .txt et .pdf pour l'instant. Si tu as un .docx ou autre, convertis en markdown ou en PDF — markdown préféré.",
+        );
+        setUploadState("error");
+        return;
+      }
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        setUploadError(
+          `Le fichier fait ${mb} MB, je suis capée à 10 MB.`,
+        );
+        setUploadState("error");
+        return;
+      }
+
+      setUploadState("uploading");
+      setUploadError(null);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(data.error || `upload failed (${res.status})`);
+        }
+        const att = (await res.json()) as MessageAttachment;
+        setPendingAttachment(att);
+        setUploadState("idle");
+      } catch (err) {
+        setUploadError(
+          err instanceof Error
+            ? err.message
+            : "L'upload a échoué. Tu peux réessayer.",
+        );
+        setUploadState("error");
+      }
+    },
+    [],
+  );
+
+  const handleRemoveAttachment = useCallback(() => {
+    setPendingAttachment(null);
+    setUploadState("idle");
+    setUploadError(null);
+  }, []);
+
   // ── submit + stream
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -106,16 +183,28 @@ export default function Chat({
       setInput("");
       setMessages((m) => [
         ...m,
-        { role: "user", content: text, createdAt: new Date().toISOString() },
+        {
+          role: "user",
+          content: text,
+          createdAt: new Date().toISOString(),
+          attachments: pendingAttachment ? [pendingAttachment] : undefined,
+        },
         { role: "assistant", content: "" },
       ]);
+      const sentAttachment = pendingAttachment;
+      setPendingAttachment(null);
       setIsStreaming(true);
 
       try {
+        const attachmentsForRequest = sentAttachment ? [sentAttachment] : [];
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId, message: text }),
+          body: JSON.stringify({
+            chatId,
+            message: text,
+            attachments: attachmentsForRequest,
+          }),
         });
 
         const newId = res.headers.get("X-Chat-Id");
@@ -162,7 +251,7 @@ export default function Chat({
         inputRef.current?.focus();
       }
     },
-    [input, isStreaming, chatId, refreshChats, router],
+    [input, isStreaming, chatId, refreshChats, router, pendingAttachment],
   );
 
   const activeTitle =
@@ -269,38 +358,91 @@ export default function Chat({
           onSubmit={handleSubmit}
           className="flex-shrink-0 px-6 md:px-8 pb-6 pt-3 bg-background"
         >
-          <div
-            className={`max-w-[720px] mx-auto flex items-center gap-2.5 px-4 py-3 bg-surface border rounded-full transition-colors ${
-              isStreaming
-                ? "border-border opacity-60"
-                : "border-border focus-within:border-foreground"
-            }`}
-          >
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isStreaming}
-              placeholder={isStreaming ? "…" : "écris ici…"}
-              className="flex-1 bg-transparent border-none outline-none text-foreground text-[14.5px] placeholder:text-faint disabled:cursor-not-allowed"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={isStreaming || !input.trim()}
-              className="w-8 h-8 grid place-items-center bg-foreground text-background rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Envoyer"
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <div className="max-w-[720px] mx-auto flex flex-col gap-2">
+            {(pendingAttachment || uploadState === "uploading") && (
+              <div className="flex items-center">
+                {uploadState === "uploading" ? (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-md text-muted text-[13px]">
+                    <span className="font-mono text-[11px] tracking-[0.14em] uppercase">
+                      Envoi…
+                    </span>
+                  </div>
+                ) : pendingAttachment ? (
+                  <AttachmentChip
+                    name={pendingAttachment.name}
+                    sizeBytes={pendingAttachment.sizeBytes}
+                    onRemove={handleRemoveAttachment}
+                  />
+                ) : null}
+              </div>
+            )}
+            {uploadError && (
+              <div className="text-[12.5px] text-red-500 leading-[1.4] font-prose">
+                {uploadError}
+              </div>
+            )}
+            <div
+              className={`flex items-center gap-2.5 px-4 py-3 bg-surface border rounded-full transition-colors ${
+                isStreaming
+                  ? "border-border opacity-60"
+                  : "border-border focus-within:border-foreground"
+              }`}
             >
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="w-3.5 h-3.5"
+              <button
+                type="button"
+                onClick={handlePickFile}
+                disabled={isStreaming || uploadState === "uploading"}
+                className="w-7 h-7 grid place-items-center text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                aria-label="Joindre un document"
+                title="Joindre un .md, .txt ou .pdf"
               >
-                <path d="M3 8h10M9 4l4 4-4 4" />
-              </svg>
-            </button>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  className="w-4 h-4"
+                >
+                  <path d="M10.5 2.5 5 8a2 2 0 0 0 2.83 2.83l5-5a3.5 3.5 0 0 0-4.95-4.95L3 6.27a5 5 0 0 0 7.07 7.07l4.43-4.43" />
+                </svg>
+              </button>
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isStreaming}
+                placeholder={isStreaming ? "…" : "écris ici…"}
+                className="flex-1 bg-transparent border-none outline-none text-foreground text-[14.5px] placeholder:text-faint disabled:cursor-not-allowed"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={
+                  isStreaming ||
+                  uploadState === "uploading" ||
+                  (!input.trim() && !pendingAttachment)
+                }
+                className="w-8 h-8 grid place-items-center bg-foreground text-background rounded-full disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                aria-label="Envoyer"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="w-3.5 h-3.5"
+                >
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </button>
+            </div>
           </div>
         </form>
       </main>

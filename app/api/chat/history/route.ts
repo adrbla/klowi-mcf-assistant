@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       role: m.role,
       content: m.content,
       createdAt: m.createdAt,
+      attachments: m.attachments ?? undefined,
     })),
   );
 }
