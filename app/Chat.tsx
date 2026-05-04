@@ -10,6 +10,8 @@ import { AttachmentChip } from "./components/AttachmentChip";
 import type { ChatSummary } from "./components/ChatListItem";
 import type { MessageAttachment } from "@/lib/db/schema";
 
+// Duplicated from lib/attachments.ts — that module is server-only so it
+// cannot be imported here. Keep these in sync if limits change.
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".pdf", ".md", ".txt"] as const;
 
@@ -34,6 +36,7 @@ export default function Chat({
   >("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -121,7 +124,7 @@ export default function Chat({
       e.target.value = "";
       if (!file) return;
 
-      // Client-side validation (filet, server re-validates).
+      // Client-side validation; server re-validates.
       const lower = file.name.toLowerCase();
       const acceptedExt = ACCEPTED_EXTENSIONS.some((x) => lower.endsWith(x));
       if (!acceptedExt) {
@@ -142,10 +145,16 @@ export default function Chat({
 
       setUploadState("uploading");
       setUploadError(null);
+      const controller = new AbortController();
+      uploadAbortRef.current = controller;
       try {
         const fd = new FormData();
         fd.append("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: fd,
+          signal: controller.signal,
+        });
         if (!res.ok) {
           const data = (await res.json().catch(() => ({}))) as {
             error?: string;
@@ -153,21 +162,32 @@ export default function Chat({
           throw new Error(data.error || `upload failed (${res.status})`);
         }
         const att = (await res.json()) as MessageAttachment;
-        setPendingAttachment(att);
-        setUploadState("idle");
+        // Only commit if this upload wasn't cancelled in flight.
+        if (uploadAbortRef.current === controller) {
+          setPendingAttachment(att);
+          setUploadState("idle");
+        }
       } catch (err) {
+        // User-initiated abort: silently leave state cleared.
+        if (err instanceof Error && err.name === "AbortError") return;
         setUploadError(
           err instanceof Error
             ? err.message
             : "L'upload a échoué. Tu peux réessayer.",
         );
         setUploadState("error");
+      } finally {
+        if (uploadAbortRef.current === controller) {
+          uploadAbortRef.current = null;
+        }
       }
     },
     [],
   );
 
   const handleRemoveAttachment = useCallback(() => {
+    uploadAbortRef.current?.abort();
+    uploadAbortRef.current = null;
     setPendingAttachment(null);
     setUploadState("idle");
     setUploadError(null);
