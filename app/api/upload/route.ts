@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate size (server-side filet de sécurité; client also validates).
+  if (file.size === 0) {
+    return Response.json({ error: "file is empty" }, { status: 400 });
+  }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     return Response.json(
       {
