@@ -12,7 +12,7 @@ import {
   touchChat,
   setTitleIfDefault,
 } from "@/lib/db/queries";
-import type { Message as DbMessage, MessageAttachment } from "@/lib/db/schema";
+import type { MessageAttachment } from "@/lib/db/schema";
 import { buildAttachmentBlocks } from "@/lib/attachments";
 
 export const runtime = "nodejs";
@@ -61,10 +61,8 @@ export async function POST(req: NextRequest) {
   // Re-fetch attachments listed on each historical message and rebuild the
   // Anthropic content array. This means the companion sees previously
   // shared documents on every turn — not just the turn they were sent.
-  const allMessages: DbMessage[] = [...history];
-
   const historyForApi: Anthropic.MessageParam[] = await Promise.all(
-    allMessages.map(async (m) => {
+    history.map(async (m) => {
       const baseText = m.content;
       const atts = (m.attachments ?? []) as MessageAttachment[];
       if (atts.length === 0) {
