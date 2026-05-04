@@ -1,6 +1,6 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { head } from "@vercel/blob";
+import { get } from "@vercel/blob";
 import type { MessageAttachment } from "./db/schema";
 
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -43,17 +43,13 @@ export function resolveMime(name: string, browserMime: string): string {
   return browserMime || "application/octet-stream";
 }
 
+// Private store: use the SDK's authenticated `get()` (the URLs returned
+// by `head()` are not directly fetchable for private blobs — they 403).
+// Same pattern as `lib/system-prompt.ts`.
 async function fetchBlob(blobPath: string): Promise<ArrayBuffer> {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error("BLOB_READ_WRITE_TOKEN not set");
-  const meta = await head(blobPath, { token });
-  const res = await fetch(meta.downloadUrl);
-  if (!res.ok) {
-    throw new Error(
-      `failed to fetch blob ${blobPath}: ${res.status} ${res.statusText}`,
-    );
-  }
-  return res.arrayBuffer();
+  const result = await get(blobPath, { access: "private" });
+  if (!result) throw new Error(`Blob get returned null for ${blobPath}`);
+  return new Response(result.stream).arrayBuffer();
 }
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
