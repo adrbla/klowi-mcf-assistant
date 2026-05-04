@@ -12,6 +12,8 @@ import {
   touchChat,
   setTitleIfDefault,
 } from "@/lib/db/queries";
+import type { Message as DbMessage, MessageAttachment } from "@/lib/db/schema";
+import { buildAttachmentBlocks } from "@/lib/attachments";
 
 export const runtime = "nodejs";
 export const preferredRegion = "fra1";
@@ -19,7 +21,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  let body: { chatId?: string; message?: string };
+  let body: {
+    chatId?: string;
+    message?: string;
+    attachments?: MessageAttachment[];
+  };
   try {
     body = await req.json();
   } catch {
@@ -43,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
 
   const history = await listMessages(chatId);
-  await addUserMessage(chatId, userMessage);
+  await addUserMessage(chatId, userMessage, body.attachments);
 
   // The first user message of a chat sets the title (truncated for sidebar).
   const title =
@@ -52,10 +58,33 @@ export async function POST(req: NextRequest) {
 
   const systemText = await assembleSystemPrompt();
 
-  const historyForApi: Anthropic.MessageParam[] = history.map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  // Re-fetch attachments listed on each historical message and rebuild the
+  // Anthropic content array. This means the companion sees previously
+  // shared documents on every turn — not just the turn they were sent.
+  const allMessages: DbMessage[] = [...history];
+
+  const historyForApi: Anthropic.MessageParam[] = await Promise.all(
+    allMessages.map(async (m) => {
+      const baseText = m.content;
+      const atts = (m.attachments ?? []) as MessageAttachment[];
+      if (atts.length === 0) {
+        return {
+          role: m.role as "user" | "assistant",
+          content: baseText,
+        };
+      }
+      const blocks: Anthropic.ContentBlockParam[] = [];
+      for (const att of atts) {
+        const built = await buildAttachmentBlocks(att);
+        if (built) blocks.push(...built);
+      }
+      blocks.push({ type: "text", text: baseText });
+      return {
+        role: m.role as "user" | "assistant",
+        content: blocks,
+      };
+    }),
+  );
 
   // Seeded conversations open with an assistant message (the welcome
   // opening). Without a prior user message, the model assumes there was
@@ -71,9 +100,31 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Build the current user message — may include attachments uploaded
+  // alongside this turn.
+  const currentAttachments = body.attachments ?? [];
+  const currentBlocks: Anthropic.ContentBlockParam[] = [];
+  for (const att of currentAttachments) {
+    const built = await buildAttachmentBlocks(att);
+    if (built) currentBlocks.push(...built);
+  }
+  currentBlocks.push({ type: "text", text: userMessage });
+
+  // Cache breakpoint: place it on the LAST content block of the LATEST
+  // message that carries attachments. Anthropic caches everything up to
+  // and including that block, so subsequent turns don't re-pay attachment
+  // tokens. If no attachments anywhere in the conversation, no extra
+  // breakpoint is added (the system prompt already has one).
+  const currentUserContent: Anthropic.ContentBlockParam[] | string =
+    currentAttachments.length > 0
+      ? withCacheBreakpointOnLast(currentBlocks)
+      : currentBlocks.length === 1
+        ? userMessage
+        : currentBlocks;
+
   const anthropicMessages: Anthropic.MessageParam[] = [
     ...historyForApi,
-    { role: "user", content: userMessage },
+    { role: "user", content: currentUserContent },
   ];
 
   const stream = anthropic.messages.stream({
@@ -90,7 +141,6 @@ export async function POST(req: NextRequest) {
     output_config: { effort: "medium" },
     tools: [{ type: "web_search_20260209", name: "web_search" }],
     messages: anthropicMessages,
-    cache_control: { type: "ephemeral" },
   });
 
   const encoder = new TextEncoder();
@@ -132,4 +182,20 @@ export async function POST(req: NextRequest) {
       "Cache-Control": "no-store",
     },
   });
+}
+
+function withCacheBreakpointOnLast(
+  blocks: Anthropic.ContentBlockParam[],
+): Anthropic.ContentBlockParam[] {
+  if (blocks.length === 0) return blocks;
+  const result = [...blocks];
+  const last = result[result.length - 1];
+  // Only attach cache_control on block types that support it (document, text).
+  if (last.type === "document" || last.type === "text") {
+    result[result.length - 1] = {
+      ...last,
+      cache_control: { type: "ephemeral" },
+    };
+  }
+  return result;
 }
