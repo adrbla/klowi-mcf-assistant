@@ -1,7 +1,13 @@
 import "server-only";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { db } from "./client";
-import { chats, messages, type Chat, type Message } from "./schema";
+import {
+  chats,
+  messages,
+  type Chat,
+  type Message,
+  type MessageAttachment,
+} from "./schema";
 
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID ?? "chloe";
 
@@ -31,10 +37,19 @@ export async function listMessages(chatId: string): Promise<Message[]> {
     .orderBy(asc(messages.createdAt));
 }
 
-export async function addUserMessage(chatId: string, content: string): Promise<Message> {
+export async function addUserMessage(
+  chatId: string,
+  content: string,
+  attachments?: MessageAttachment[],
+): Promise<Message> {
   const [m] = await db
     .insert(messages)
-    .values({ chatId, role: "user", content })
+    .values({
+      chatId,
+      role: "user",
+      content,
+      attachments: attachments && attachments.length > 0 ? attachments : null,
+    })
     .returning();
   return m;
 }

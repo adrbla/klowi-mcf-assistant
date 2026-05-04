@@ -1,5 +1,13 @@
 import { pgTable, text, timestamp, uuid, integer, jsonb } from "drizzle-orm/pg-core";
 
+export type MessageAttachment = {
+  id: string;          // UUID generated server-side at upload
+  name: string;        // original filename
+  mediaType: string;   // "application/pdf" | "text/markdown" | "text/plain"
+  sizeBytes: number;
+  blobPath: string;    // path within Vercel Blob, e.g. "attachments/<uuid>.pdf"
+};
+
 export const chats = pgTable("chats", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
@@ -17,6 +25,7 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   // Optional: store raw Anthropic content blocks (tool_use, tool_result, etc.) for replay
   blocks: jsonb("blocks"),
+  attachments: jsonb("attachments").$type<MessageAttachment[]>(),
   // Token accounting (filled when streaming completes)
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
