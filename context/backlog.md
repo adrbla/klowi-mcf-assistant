@@ -2,7 +2,7 @@
 
 ## Now (immediate priority)
 
-- [ ] **Phase 2 welcome message** : co-rédaction du texte d'accueil dans `lib/seeded-convs.ts` selon `brief_message_accueil_chloe_compagnon_de_preparation.md`. Rework `10-posture.md` pour intégrer la posture compagnon / espace de rebond / ne fait pas le travail à sa place. Re-seed prod via `npm run seed-welcome`. Envoi du lien à Chloë.
+- [ ] **Streaming UI sur 1ʳᵉ réponse avec doc** : observer en prod si Chloë voit du blanc trop longtemps après l'envoi d'un PDF. Cause probable : cache cold + Anthropic processing du document = latence avant le 1ᵉʳ chunk. Si récurrent, options : (a) cache mémoire 5min des bytes Blob côté serveur (cf. pattern `lib/system-prompt.ts`), (b) indicateur UI "lecture du document…" pendant l'attente, (c) timeout côté client avec retry.
 - [ ] **Wrap seed script in transaction** : `scripts/seed-welcome-conv.ts` enchaîne UPSERT chat → DELETE messages → INSERT opening. Si l'INSERT échoue après le DELETE, conv reste vide (UX cassée). Wrap en `db.transaction(...)` Drizzle (raw `BEGIN/COMMIT` via `@vercel/postgres` ne tient pas le pool de connexions).
 - [ ] **Race condition switch-pendant-streaming** : si Chloë clique une autre conv pendant que le streaming d'un assistant message est en cours, le `useEffect` prop-sync de `Chat.tsx` peut écraser `messages` pendant que la boucle de stream y écrit encore. Probabilité faible (single-user, switch rare en cours de stream), mais réel. Fix : `AbortController` sur le `fetch`, ou snapshot du chatId au début du stream et garde sur les `setMessages` updates.
 - [ ] **Observer le 1er échange réel de Chloë** sur `/conv/[welcome-id]`. Friction points, tone, perception « pas ChatGPT ». Resserrer si nécessaire.
