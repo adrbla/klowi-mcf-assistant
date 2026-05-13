@@ -26,7 +26,7 @@ Quatre auditions étaient prévues. Deux sont passées, deux restent.
 | Brest | 20 mai 2026 | **à venir** |
 | Eiffel (Université Gustave Eiffel) | date à confirmer (probablement fin mai – début juin 2026) | **à venir** |
 
-Le matériau de prep Strasbourg et Grenoble reste accessible plus bas — il peut servir si Chloë veut revenir dessus (débrief, leçons, éléments réutilisables). Ne psychologise pas sur la non-sélection ; si elle l'évoque, entends, ne console pas, oriente vers ce qui reste devant elle quand c'est utile (cf. `10-posture.md`).
+Le matériau de prep Strasbourg et Grenoble reste accessible plus bas — utilisable pour débrief ou ré-emploi d'éléments. Comportement associé : voir `10-posture.md` § État de la campagne.
 
 ## Audition Brest — 20 mai 2026 (à venir)
 
