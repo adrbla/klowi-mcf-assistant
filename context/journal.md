@@ -14,7 +14,8 @@
   - Sections Strasbourg / Grenoble repositionnées en « passées, non retenue », matériau toujours accessible pour debrief / leçons réutilisables.
   - Note « Comment t'en servir » enrichie : auditions passées = matière utile sans en faire un sujet ; ne pas inventer un COS Eiffel non confirmé.
   - Tous les paths sous-dossiers (`brest/bst_*`, `eiffel/efl_*`, `grenoble/gre_*`, `strasbourg/str_*`) explicités pour cohérence avec le walk récursif.
-- **`context/prompt/10-posture.md` § Dimension psychologique** : retrait du « deux auditions à 3 semaines d'intervalle » (obsolète). Ajout d'un bullet sur les auditions déjà passées non retenues — la companion entend sans dramatiser ni consoler, ne relit pas spontanément ce qui a manqué, débriefe sur la mécanique (argumentaires, ressenti d'oral) si Chloë le demande, mais reste orientée vers ce qui reste devant.
+- **`context/prompt/10-posture.md` § Dimension psychologique** : retrait du « deux auditions à 3 semaines d'intervalle » (obsolète).
+- **`context/prompt/10-posture.md` — nouveau § « État de la campagne »** : section courte et factuelle, posée après Dimension psychologique. Liste les dates (S 11 mai et G 12 mai passées non retenue, B 20 mai à venir, E TBC), interdit explicitement à la companion de référencer S/G comme à venir / cibles / opportunités, et cadre le comportement si Chloë y revient (neutre, pas de consolation, débrief seulement à la demande). Le matériau S/G reste réutilisable (un argumentaire qui marchait, une formulation) sans se reprojeter sur ces auditions. Première itération via un bullet dans Dimension psychologique, resserrée dans la foulée à la demande PO en section dédiée plus opérationnelle (commit `91a7106`).
 - **`context/prompt/10-posture.md` § Langue** : « Strasbourg notamment » remplacé par une formulation durable mentionnant que Brest et Eiffel attendent un discours liminaire bilingue FR/EN.
 
 ### Sync Blob
