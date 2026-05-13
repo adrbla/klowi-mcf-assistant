@@ -2,6 +2,45 @@
 
 <!-- Reverse chronological order: newest entries first. Always prepend below this line. -->
 
+## 2026-05-13 — Reprise post-Strasbourg / Grenoble : focus Brest + Eiffel (Adrien B.)
+
+**Contexte** : Strasbourg (11 mai) et Grenoble (12 mai) sont passées, Chloë n'a pas été retenue. Restent Brest (20 mai) et Eiffel (date à confirmer, probablement fin mai – début juin). Adrien a déposé les sous-dossiers `eiffel/` et `brest/` dans `_prep/` (5 fichiers chacun : dossier stratégique, DR prep, discours liminaire, questions anticipées, prompt DR).
+
+### Updates pour que la companion soit alignée
+
+- **`context/prompt/15-corpus-map.md`** refondu :
+  - Nouvelle section « État de la campagne » en tête : tableau récap (statut passée/à venir, dates, non-sélection).
+  - Sections Brest (poste UBO/HCTI, format 10 min bilingue + 25 min Q&A, enjeu Master L3C en crise) et Eiffel (poste UGE/LISAA équipe SEA, Axe 4 « Ville et représentation », initiative FUTURE, atout ATER-UPEC) ajoutées en tête (avant les passées).
+  - Sections Strasbourg / Grenoble repositionnées en « passées, non retenue », matériau toujours accessible pour debrief / leçons réutilisables.
+  - Note « Comment t'en servir » enrichie : auditions passées = matière utile sans en faire un sujet ; ne pas inventer un COS Eiffel non confirmé.
+  - Tous les paths sous-dossiers (`brest/bst_*`, `eiffel/efl_*`, `grenoble/gre_*`, `strasbourg/str_*`) explicités pour cohérence avec le walk récursif.
+- **`context/prompt/10-posture.md` § Dimension psychologique** : retrait du « deux auditions à 3 semaines d'intervalle » (obsolète). Ajout d'un bullet sur les auditions déjà passées non retenues — la companion entend sans dramatiser ni consoler, ne relit pas spontanément ce qui a manqué, débriefe sur la mécanique (argumentaires, ressenti d'oral) si Chloë le demande, mais reste orientée vers ce qui reste devant.
+- **`context/prompt/10-posture.md` § Langue** : « Strasbourg notamment » remplacé par une formulation durable mentionnant que Brest et Eiffel attendent un discours liminaire bilingue FR/EN.
+
+### Sync Blob
+
+- `npm run sync-prep` : 26 fichiers uploadés (16 existants + 10 nouveaux Eiffel/Brest). Prod alignée.
+
+### Smoke check
+
+- TypeScript / lint pas re-runnés (changements limités aux fichiers `.md` du prompt — pas de code). Le walk récursif côté `lib/system-prompt.ts` ramassait déjà les sous-dossiers (logique inchangée depuis Phase 3).
+- Le system prompt va passer de ~140K tokens à ~+25K tokens (5 nouveaux fichiers de ~15-30 KB chacun × 2 auditions). Premier tour de chaque session = cache cold + warm, ensuite cache hit. Acceptable pour la phase.
+
+### Concerns notés
+
+- **Volume du corpus en croissance** : on n'a rien retiré (S/G servent encore pour debrief / réutilisation d'argumentaires). Si on dépasse un seuil gênant en latence cold-start, l'item backlog « Dédup proactive du corpus » devient prioritaire. Aujourd'hui : pas urgent.
+- **Date Eiffel non confirmée** : la corpus map et la posture le disent explicitement. Quand Chloë la confirme, à mettre à jour côté `15-corpus-map.md` (et éventuellement la mentionner dans `efl_dossier-strategique.md` mais ce dernier est sourcé externe — il faut le faire mettre à jour côté Drive).
+- **Fiches absentes pour Brest/Eiffel** : pas de `fiche-cv_*` ni `fiche-soutenance_*` pour ces deux auditions dans `context/deeper-context/` (contrairement à Strasbourg/Grenoble). Si le PO produit ces fiches, elles seront automatiquement embarquées (walk récursif). Non bloquant : les dossiers stratégiques + DR prep couvrent l'essentiel.
+
+### Open questions
+
+**For PO** :
+
+- **Confirmation de la date Eiffel** dès que Chloë l'a.
+- **Faut-il enlever Strasbourg/Grenoble du corpus en prod ?** Aujourd'hui : non, on les garde pour le debrief. À reposer si Chloë signale qu'elle ne veut plus en entendre parler, ou si la latence cold-start devient gênante.
+
+***
+
 ## 2026-05-04 — Phase 7 : upload de documents (.md, .txt, .pdf) (Adrien B.)
 
 **Goal**: permettre à Chloë de joindre des fichiers à ses messages plutôt que de copier-coller de gros blocs de texte. PDFs lus avec leur structure de pages (support natif Anthropic).

@@ -34,6 +34,7 @@
 
 ## Done
 
+- [x] Corpus map + posture mis à jour pour la reprise post-Strasbourg/Grenoble (S/G passées non retenue, focus Brest 20 mai + Eiffel TBC), 10 fichiers `eiffel/`+`brest/` synced Blob — *2026-05-13*
 - [x] Scaffold Next.js (App Router, TS, Tailwind v4, ESLint, Turbopack) — *Phase 1*
 - [x] Décider stratégie d'assemblage du system prompt (= static concat + caching) — *Phase 1*
 - [x] Décider la persistence (= Vercel Postgres + Drizzle) — *Phase 1*
@@ -77,4 +78,4 @@
 - [x] Upload de documents (`.md`, `.txt`, `.pdf`) : paperclip + chip, `/api/upload` Blob, colonne `attachments JSONB` sur `messages`, expansion en content blocks Anthropic (PDF natif page-aware, MD/TXT inline), cache breakpoint sur le dernier message-avec-doc, awareness dans `10-posture.md` — *Phase 7*
 
 ***
-*Last updated: 2026-05-04 (Phase 7 — upload de documents)*
+*Last updated: 2026-05-13 (reprise post-S/G — focus Brest + Eiffel)*
